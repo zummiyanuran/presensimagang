@@ -1177,6 +1177,15 @@
           const reqHariIni = (requests || []).filter(r => r.user_id === uId && (bersihkanTanggal(r.date) === tglStr || (r.description && r.description.includes(tglStr))));
           const claimApproved = reqHariIni.filter(r => r.type === 'claim_absen' && r.status === 'Disetujui');
           const izinApproved = reqHariIni.find(r => r.type === 'izin' && r.status === 'Disetujui');
+          const shiftApproved = reqHariIni.find(r => r.type === 'shift' && r.status === 'Disetujui');
+
+          let shiftKerjaText = "FT (09.00 - 17.00)";
+          if (shiftApproved) {
+            const detailText = shiftApproved.shift_choice || shiftApproved.description || '';
+            if (detailText.includes('EM') || detailText.includes('08.00')) {
+              shiftKerjaText = "EM (08.00 - 16.00)";
+            }
+          }
 
           let claimMasukInfo = claimApproved.find(c => c.shift_choice && c.shift_choice.includes('Masuk'));
           let claimPulangInfo = claimApproved.find(c => c.shift_choice && c.shift_choice.includes('Pulang'));
@@ -1205,6 +1214,7 @@
               tanggal: opsiTgl,
               nama: nama,
               unit: unit,
+              shift: shiftKerjaText,
               jamMasuk: jamMasuk,
               jamPulang: jamPulang,
               status: statusAbsen
@@ -1217,6 +1227,7 @@
         container.innerHTML = dataExportSuperAdmin.map(row => `
           <div class="list-item">
             <b>${row.nama}</b> (${row.unit}) - <small>${row.tanggal}</small><br>
+            ⏰ Shift: <b>${row.shift}</b><br>
             📌 Masuk: ${row.jamMasuk} | Pulang: ${row.jamPulang}<br>
             Status: <span class="status-badge-info ${row.status.includes('Hadir')?'badge-approved':'badge-pending'}">${row.status}</span>
           </div>
@@ -1228,7 +1239,17 @@
 
     function exportToExcel() {
       if (dataExportSuperAdmin.length === 0) return alert("Tidak ada data untuk diexport!");
-      const ws = XLSX.utils.json_to_sheet(dataExportSuperAdmin);
+      const dataFormatted = dataExportSuperAdmin.map(item => ({
+        "Tanggal": item.tanggal,
+        "Nama Pemohon": item.nama,
+        "Unit Kerja": item.unit,
+        "Shift Kerja": item.shift,
+        "Jam Masuk": item.jamMasuk,
+        "Jam Pulang": item.jamPulang,
+        "Status Presensi": item.status
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(dataFormatted);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Rekap Presensi");
       XLSX.writeFile(wb, `Rekap_Presensi_Magang_${Date.now()}.xlsx`);
@@ -1237,16 +1258,16 @@
     function exportToPDF() {
       if (dataExportSuperAdmin.length === 0) return alert("Tidak ada data untuk diexport!");
       const { jsPDF } = window.jspdf;
-      const doc = new jsPDF();
+      const doc = new jsPDF('landscape');
 
       doc.text("Rekap Presensi Magang Komnas Perempuan", 14, 15);
       
       const tableData = dataExportSuperAdmin.map(row => [
-        row.tanggal, row.nama, row.unit, row.jamMasuk, row.jamPulang, row.status
+        row.tanggal, row.nama, row.unit, row.shift, row.jamMasuk, row.jamPulang, row.status
       ]);
 
       doc.autoTable({
-        head: [['Tanggal', 'Nama Pemohon', 'Unit Kerja', 'Jam Masuk', 'Jam Pulang', 'Status']],
+        head: [['Tanggal', 'Nama Pemohon', 'Unit Kerja', 'Shift Kerja', 'Jam Masuk', 'Jam Pulang', 'Status']],
         body: tableData,
         startY: 22,
         styles: { fontSize: 8 }
