@@ -8,9 +8,9 @@
   <style>
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #eef2f5; padding: 20px 0; }
-    .card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); width: 420px; text-align: center; }
+    .card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); width: 440px; text-align: center; }
     h2, h3, h4 { margin-top: 0; color: #2c3e50; }
-    input, select, textarea { width: 100%; padding: 10px; margin: 6px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
+    input, select, textarea { width: 100%; padding: 9px; margin: 5px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
     button { background: #2563eb; color: white; border: none; padding: 10px; width: 100%; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; margin-top: 6px; }
     button:hover { background: #1d4ed8; }
     button:disabled { background: #cbd5e1 !important; color: #64748b !important; cursor: not-allowed; }
@@ -18,13 +18,14 @@
     .btn-pulang:hover { background: #dc2626; }
     .btn-secondary { background: #10b981; }
     .btn-warning { background: #f59e0b; }
+    .btn-purple { background: #8b5cf6; }
     .btn-approve { background: #16a34a; padding: 4px 8px; font-size: 11px; margin-top: 4px; width: auto; }
     .btn-reject { background: #dc2626; padding: 4px 8px; font-size: 11px; margin-top: 4px; width: auto; }
     .hidden { display: none; }
     #status { margin-top: 12px; font-size: 12px; word-break: break-word; }
     .profile-img { width: 75px; height: 75px; border-radius: 50%; object-fit: cover; border: 2px solid #2563eb; display: block; margin: 0 auto 10px; background-color: #e2e8f0; }
     .nav-tabs { display: flex; gap: 4px; margin-bottom: 15px; flex-wrap: wrap; }
-    .nav-tabs button { padding: 6px 2px; font-size: 10px; margin: 0; background: #e2e8f0; color: #334155; flex: 1; border-radius: 4px; min-width: 60px; }
+    .nav-tabs button { padding: 6px 2px; font-size: 10px; margin: 0; background: #e2e8f0; color: #334155; flex: 1; border-radius: 4px; min-width: 55px; }
     .nav-tabs button.active { background: #2563eb; color: white; }
     .list-item { background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 6px; margin-bottom: 6px; font-size: 11px; text-align: left; }
     .date-badge { background: #f1f5f9; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 12px; display: inline-block; }
@@ -34,7 +35,8 @@
     .badge-pending { background: #fef3c7; color: #d97706; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
     .badge-approved { background: #dcfce7; color: #15803d; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
     .badge-rejected { background: #fee2e2; color: #b91c1c; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
-    .role-badge { display: inline-block; background: #e0e7ff; color: #4338ca; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; margin-bottom: 8px; }
+    .role-badge { display: inline-block; background: #e0e7ff; color: #4338ca; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; margin-bottom: 4px; }
+    .unit-badge { display: inline-block; background: #fef3c7; color: #b45309; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; margin-bottom: 8px; }
   </style>
 </head>
 <body>
@@ -44,10 +46,9 @@
 
     <!-- FORM AUTENTIKASI -->
     <div id="authSection">
-      <input type="email" id="email" placeholder="Email Karyawan / Supervisor">
+      <input type="email" id="email" placeholder="Email Pengguna">
       <input type="password" id="password" placeholder="Password (Min. 6 Karakter)">
       <button type="button" onclick="login()">Masuk</button>
-      <button type="button" class="btn-secondary" onclick="register()">Daftar Akun Baru</button>
     </div>
 
     <!-- DASHBOARD UTAMA -->
@@ -55,6 +56,7 @@
       <img id="userAvatar" class="profile-img" src="https://ui-avatars.com/api/?name=User&background=2563eb&color=fff" alt="Profile">
       <h4 id="userName" style="margin-bottom:2px;">Pengguna</h4>
       <div id="userRoleBadge" class="role-badge">Role: Magang</div>
+      <div id="userUnitBadge" class="unit-badge">Unit: Umum</div>
 
       <!-- TAB NAVIGASI -->
       <div class="nav-tabs">
@@ -64,6 +66,9 @@
 
         <!-- TAB KHUSUS SUPERVISOR -->
         <button id="tabApproveBtn" class="hidden" onclick="switchTab('approve')" style="background:#f59e0b; color:white;">Persetujuan</button>
+
+        <!-- TAB KHUSUS SUPER ADMIN -->
+        <button id="tabAdminBtn" class="hidden" onclick="switchTab('admin')" style="background:#8b5cf6; color:white;">Super Admin</button>
 
         <button id="tabRekanBtn" onclick="switchTab('rekan')">Rekan</button>
         <button id="tabProfilBtn" onclick="switchTab('profil')">Profil</button>
@@ -104,21 +109,53 @@
         <div id="approvalList" style="max-height:250px; overflow-y:auto;"></div>
       </div>
 
+      <!-- TAB KHUSUS SUPER ADMIN: KELOLA AKUN & UNIT KERJA -->
+      <div id="tabAdmin" class="hidden">
+        <h4 style="margin-bottom:8px;">Manajemen Akun & Hirarki</h4>
+        
+        <div style="background:#f1f5f9; padding:10px; border-radius:8px; text-align:left; margin-bottom:12px;">
+          <b style="font-size:12px;">Pendaftaran Akun Baru</b>
+          <input type="text" id="adminNewName" placeholder="Nama Lengkap">
+          <input type="email" id="adminNewEmail" placeholder="Email Pengguna">
+          <input type="password" id="adminNewPassword" placeholder="Password (Min. 6 Karakter)">
+          
+          <label style="font-size:11px;">Role Akun:</label>
+          <select id="adminNewRole">
+            <option value="magang">Anak Magang</option>
+            <option value="supervisor">Supervisor Magang</option>
+            <option value="superadmin">Super Admin</option>
+          </select>
+
+          <label style="font-size:11px;">Unit Kerja:</label>
+          <input type="text" id="adminNewUnit" placeholder="Contoh: Divisi IT, Humas, Legal">
+
+          <label style="font-size:11px;">Pilih Supervisor Atasan:</label>
+          <select id="adminNewSupervisor">
+            <option value="">-- Tanpa Atasan Direct --</option>
+          </select>
+
+          <button class="btn-purple" onclick="superAdminRegisterUser()">Buat Akun Baru</button>
+        </div>
+
+        <h4 style="margin-bottom:6px;">Kelola Akun & Penugasan</h4>
+        <div id="adminUserList" style="max-height:200px; overflow-y:auto;"></div>
+      </div>
+
       <!-- TAB 4: DIREKTORI REKAN -->
       <div id="tabRekan" class="hidden">
         <h4>Daftar Rekan Magang</h4>
         <div id="rekanList" style="max-height:220px; overflow-y:auto;"></div>
       </div>
 
-      <!-- TAB 5: PROFIL & FOTO & ROLE -->
+      <!-- TAB 5: PROFIL & FOTO -->
       <div id="tabProfil" class="hidden">
         <input type="text" id="editFullName" placeholder="Nama Lengkap Kamu">
         
-        <label style="font-size:11px; display:block; text-align:left; margin-top:6px;">Role Akun:</label>
-        <select id="editRole">
-          <option value="magang">Anak Magang</option>
-          <option value="supervisor">Supervisor Magang</option>
-        </select>
+        <div style="text-align:left; font-size:11px; margin:6px 0; background:#f8fafc; padding:8px; border-radius:6px;">
+          <div><b>Role Akun:</b> <span id="profileRoleText">-</span></div>
+          <div><b>Unit Kerja:</b> <span id="profileUnitText">-</span></div>
+          <div><b>Supervisor:</b> <span id="profileSupervisorText">-</span></div>
+        </div>
 
         <label style="font-size:11px; display:block; text-align:left; margin-top:6px;">Pilih Foto Profil:</label>
         <input type="file" id="avatarFile" accept="image/*">
@@ -138,6 +175,7 @@
     let currentUser = null;
     let userProfile = null;
     let userAttendances = [];
+    let listSupervisors = [];
 
     function formatTanggalLokal(dateObj) {
       const year = dateObj.getFullYear();
@@ -168,18 +206,6 @@
     }
     checkAuth();
 
-    async function register() {
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
-      const status = document.getElementById('status');
-      if (!email || !password) return status.innerHTML = "<span style='color:red'>Lengkapi data!</span>";
-      
-      status.innerText = "Mendaftarkan...";
-      const { data, error } = await supabaseClient.auth.signUp({ email, password });
-      if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
-      else status.innerHTML = "<span style='color:green'>Akun dibuat! Silakan klik Masuk.</span>";
-    }
-
     async function login() {
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
@@ -196,7 +222,7 @@
     }
 
     function switchTab(tabName) {
-      ['absen', 'shift', 'izin', 'approve', 'rekan', 'profil'].forEach(t => {
+      ['absen', 'shift', 'izin', 'approve', 'admin', 'rekan', 'profil'].forEach(t => {
         const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
         const btn = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1) + 'Btn');
         if (el) el.classList.add('hidden');
@@ -212,6 +238,7 @@
       if (tabName === 'shift') muatJadwalShift();
       if (tabName === 'izin') muatRiwayatIzin();
       if (tabName === 'approve') muatDaftarPersetujuan();
+      if (tabName === 'admin') muatMenuSuperAdmin();
     }
 
     function catatPresensi(tipeAbsen) {
@@ -370,15 +397,34 @@
         userProfile = data;
         const nama = data.nama_lengkap || data.full_name || currentUser.email;
         const role = data.role || 'magang';
+        const unit = data.unit_kerja || 'Umum';
 
         document.getElementById('userName').innerText = nama;
         document.getElementById('userRoleBadge').innerText = `Role: ${role.toUpperCase()}`;
-        document.getElementById('editRole').value = role;
+        document.getElementById('userUnitBadge').innerText = `Unit: ${unit}`;
 
-        if (role === 'supervisor') {
+        document.getElementById('profileRoleText').innerText = role.toUpperCase();
+        document.getElementById('profileUnitText').innerText = unit;
+
+        // Ambil Nama Supervisor
+        if (data.supervisor_id) {
+          const { data: spvData } = await supabaseClient.from('profiles').select('nama_lengkap, full_name').eq('id', data.supervisor_id).single();
+          document.getElementById('profileSupervisorText').innerText = spvData?.nama_lengkap || spvData?.full_name || 'Ada';
+        } else {
+          document.getElementById('profileSupervisorText').innerText = '-';
+        }
+
+        // Pengaturan Hak Akses Tab
+        if (role === 'supervisor' || role === 'superadmin') {
           document.getElementById('tabApproveBtn').classList.remove('hidden');
         } else {
           document.getElementById('tabApproveBtn').classList.add('hidden');
+        }
+
+        if (role === 'superadmin') {
+          document.getElementById('tabAdminBtn').classList.remove('hidden');
+        } else {
+          document.getElementById('tabAdminBtn').classList.add('hidden');
         }
         
         if (data.avatar_url && data.avatar_url.trim() !== "") {
@@ -392,7 +438,6 @@
 
     async function simpanProfil() {
       const fullName = document.getElementById('editFullName').value;
-      const selectedRole = document.getElementById('editRole').value;
       const avatarFile = document.getElementById('avatarFile').files[0];
       const status = document.getElementById('status');
       status.innerText = "Menyimpan profil...";
@@ -413,13 +458,12 @@
         id: currentUser.id,
         nama_lengkap: fullName,
         full_name: fullName,
-        role: selectedRole,
         avatar_url: avatarUrl
       });
 
       if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
       else {
-        status.innerHTML = "<span style='color:green'>Profil & Role berhasil diperbarui!</span>";
+        status.innerHTML = "<span style='color:green'>Profil berhasil diperbarui!</span>";
         await muatProfil();
       }
     }
@@ -481,13 +525,24 @@
       const list = document.getElementById('approvalList');
       list.innerHTML = "<small>Memuat data...</small>";
 
-      const { data: reqs } = await supabaseClient
-        .from('requests')
-        .select('*, profiles(nama_lengkap, full_name)')
-        .order('created_at', { ascending: false });
+      // Jika supervisor, hanya tampilkan anak magang dibawah koordinasinya (atau semua jika superadmin)
+      let query = supabaseClient.from('requests').select('*, profiles(nama_lengkap, full_name, supervisor_id)').order('created_at', { ascending: false });
+
+      const { data: reqs } = await query;
 
       if (reqs && reqs.length > 0) {
-        list.innerHTML = reqs.map(item => {
+        // Filter jika yang login adalah Supervisor biasa
+        const filteredReqs = reqs.filter(r => {
+          if (userProfile?.role === 'superadmin') return true;
+          return r.profiles?.supervisor_id === currentUser.id;
+        });
+
+        if (filteredReqs.length === 0) {
+          list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan izin dari anak magang bimbingan Anda.</small>";
+          return;
+        }
+
+        list.innerHTML = filteredReqs.map(item => {
           const pemohon = item.profiles?.nama_lengkap || item.profiles?.full_name || 'Anak Magang';
           const st = item.status || 'Pending';
           let badgeClass = 'badge-pending';
@@ -510,7 +565,7 @@
           `;
         }).join('');
       } else {
-        list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan izin dari anak magang.</small>";
+        list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan izin.</small>";
       }
     }
 
@@ -530,6 +585,105 @@
       }
     }
 
+    /* FITUR FITUR KHUSUS SUPER ADMIN */
+    async function muatMenuSuperAdmin() {
+      // 1. Load daftar supervisor
+      const { data: spvs } = await supabaseClient.from('profiles').select('*').in('role', ['supervisor', 'superadmin']);
+      listSupervisors = spvs || [];
+
+      const spvSelect = document.getElementById('adminNewSupervisor');
+      spvSelect.innerHTML = '<option value="">-- Tanpa Atasan Direct --</option>' + 
+        listSupervisors.map(s => `<option value="${s.id}">${s.nama_lengkap || s.full_name} (${s.role.toUpperCase()})</option>`).join('');
+
+      // 2. Load daftar seluruh user untuk diedit
+      const { data: allUsers } = await supabaseClient.from('profiles').select('*');
+      const userListContainer = document.getElementById('adminUserList');
+
+      if (allUsers && allUsers.length > 0) {
+        userListContainer.innerHTML = allUsers.map(u => {
+          const namaUser = u.nama_lengkap || u.full_name || 'Pengguna';
+          return `
+            <div class="list-item">
+              <b>${namaUser}</b>
+              <div style="display:flex; gap:4px; margin-top:4px;">
+                <select id="role_${u.id}" style="padding:2px; font-size:10px;">
+                  <option value="magang" ${u.role==='magang'?'selected':''}>Magang</option>
+                  <option value="supervisor" ${u.role==='supervisor'?'selected':''}>Supervisor</option>
+                  <option value="superadmin" ${u.role==='superadmin'?'selected':''}>Super Admin</option>
+                </select>
+                <input type="text" id="unit_${u.id}" value="${u.unit_kerja || 'Umum'}" placeholder="Unit Kerja" style="padding:2px; font-size:10px;">
+              </div>
+              <button class="btn-secondary" style="padding:4px; font-size:10px; margin-top:4px;" onclick="simpanPengaturanUser('${u.id}')">Simpan Perubahan</button>
+            </div>
+          `;
+        }).join('');
+      } else {
+        userListContainer.innerHTML = "<small>Tidak ada pengguna terdaftar.</small>";
+      }
+    }
+
+    async function superAdminRegisterUser() {
+      const name = document.getElementById('adminNewName').value.trim();
+      const email = document.getElementById('adminNewEmail').value.trim();
+      const password = document.getElementById('adminNewPassword').value;
+      const role = document.getElementById('adminNewRole').value;
+      const unit = document.getElementById('adminNewUnit').value.trim() || 'Umum';
+      const spvId = document.getElementById('adminNewSupervisor').value || null;
+      const status = document.getElementById('status');
+
+      if (!name || !email || !password) return status.innerHTML = "<span style='color:red'>Lengkapi nama, email, dan password!</span>";
+
+      status.innerText = "Mendaftarkan akun baru...";
+
+      // Pendaftaran akun Supabase Auth
+      const { data: authData, error: authErr } = await supabaseClient.auth.signUp({ email, password });
+
+      if (authErr) {
+        return status.innerHTML = `<span style='color:red'>Gagal Pendaftaran: ${authErr.message}</span>`;
+      }
+
+      if (authData?.user) {
+        // Upsert data profil dengan role, unit kerja, dan supervisor_id
+        const { error: profErr } = await supabaseClient.from('profiles').upsert({
+          id: authData.user.id,
+          nama_lengkap: name,
+          full_name: name,
+          role: role,
+          unit_kerja: unit,
+          supervisor_id: spvId
+        });
+
+        if (profErr) status.innerHTML = `<span style='color:red'>Profil gagal dibuat: ${profErr.message}</span>`;
+        else {
+          status.innerHTML = `<span style='color:green'>Akun <b>${name}</b> (${role}) berhasil dibuat!</span>`;
+          document.getElementById('adminNewName').value = '';
+          document.getElementById('adminNewEmail').value = '';
+          document.getElementById('adminNewPassword').value = '';
+          document.getElementById('adminNewUnit').value = '';
+          await muatMenuSuperAdmin();
+        }
+      }
+    }
+
+    async function simpanPengaturanUser(targetUserId) {
+      const roleBaru = document.getElementById(`role_${targetUserId}`).value;
+      const unitBaru = document.getElementById(`unit_${targetUserId}`).value;
+      const status = document.getElementById('status');
+
+      status.innerText = "Memperbarui data pengguna...";
+
+      const { error } = await supabaseClient.from('profiles').update({
+        role: roleBaru,
+        unit_kerja: unitBaru
+      }).eq('id', targetUserId);
+
+      if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
+      else {
+        status.innerHTML = "<span style='color:green'>Data pengguna berhasil diperbarui!</span>";
+        await muatMenuSuperAdmin();
+      }
+    }
+
     async function muatRekan() {
       const { data } = await supabaseClient.from('profiles').select('*');
       const list = document.getElementById('rekanList');
@@ -537,6 +691,7 @@
         list.innerHTML = data.map(r => {
           const namaRekan = r.nama_lengkap || r.full_name || 'Anak Magang';
           const roleRekan = (r.role || 'magang').toUpperCase();
+          const unitRekan = r.unit_kerja || 'Umum';
           const avatarRekan = (r.avatar_url && r.avatar_url.trim() !== "") 
             ? r.avatar_url 
             : `https://ui-avatars.com/api/?name=${encodeURIComponent(namaRekan)}&background=2563eb&color=fff`;
@@ -546,7 +701,7 @@
               <img src="${avatarRekan}" style="width:35px; height:35px; border-radius:50%; object-fit:cover;">
               <div>
                 <b>${namaRekan}</b><br>
-                <small style="color:#64748b;">Role: ${roleRekan}</small>
+                <small style="color:#64748b;">Role: ${roleRekan} | Unit: ${unitRekan}</small>
               </div>
             </div>
           `;
