@@ -91,7 +91,7 @@
         <div id="shiftList" style="max-height:230px; overflow-y:auto;"></div>
       </div>
 
-      <!-- TAB 3: FORM & STATUS IZIN (ANAK MAGANG) -->
+      <!-- TAB 3: FORM & STATUS IZIN -->
       <div id="tabIzin" class="hidden">
         <h4 style="margin-bottom:8px;">Form Pengajuan Izin</h4>
         <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Pilih Tanggal Izin:</label>
@@ -117,6 +117,7 @@
           <b style="font-size:12px;">Pendaftaran Akun Baru</b>
           <input type="text" id="adminNewName" placeholder="Nama Lengkap">
           <input type="email" id="adminNewEmail" placeholder="Email Pengguna">
+          <input type="tel" id="adminNewPhone" placeholder="Nomor Telepon / WA">
           <input type="password" id="adminNewPassword" placeholder="Password (Min. 6 Karakter)">
           
           <label style="font-size:11px;">Role Akun:</label>
@@ -150,8 +151,10 @@
       <!-- TAB 5: PROFIL & FOTO -->
       <div id="tabProfil" class="hidden">
         <input type="text" id="editFullName" placeholder="Nama Lengkap Kamu">
+        <input type="tel" id="editPhoneNumber" placeholder="Nomor Telepon / WA">
         
         <div style="text-align:left; font-size:11px; margin:6px 0; background:#f8fafc; padding:8px; border-radius:6px;">
+          <div><b>Email:</b> <span id="profileEmailText">-</span></div>
           <div><b>Role Akun:</b> <span id="profileRoleText">-</span></div>
           <div><b>Unit Kerja:</b> <span id="profileUnitText">-</span></div>
           <div><b>Supervisor:</b> <span id="profileSupervisorText">-</span></div>
@@ -398,15 +401,16 @@
         const nama = data.nama_lengkap || data.full_name || currentUser.email;
         const role = data.role || 'magang';
         const unit = data.unit_kerja || 'Umum';
+        const phone = data.phone_number || '';
 
         document.getElementById('userName').innerText = nama;
         document.getElementById('userRoleBadge').innerText = `Role: ${role.toUpperCase()}`;
         document.getElementById('userUnitBadge').innerText = `Unit: ${unit}`;
 
+        document.getElementById('profileEmailText').innerText = currentUser.email;
         document.getElementById('profileRoleText').innerText = role.toUpperCase();
         document.getElementById('profileUnitText').innerText = unit;
 
-        // Ambil Nama Supervisor
         if (data.supervisor_id) {
           const { data: spvData } = await supabaseClient.from('profiles').select('nama_lengkap, full_name').eq('id', data.supervisor_id).single();
           document.getElementById('profileSupervisorText').innerText = spvData?.nama_lengkap || spvData?.full_name || 'Ada';
@@ -414,7 +418,6 @@
           document.getElementById('profileSupervisorText').innerText = '-';
         }
 
-        // Pengaturan Hak Akses Tab
         if (role === 'supervisor' || role === 'superadmin') {
           document.getElementById('tabApproveBtn').classList.remove('hidden');
         } else {
@@ -433,11 +436,13 @@
           document.getElementById('userAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(nama)}&background=2563eb&color=fff`;
         }
         document.getElementById('editFullName').value = nama;
+        document.getElementById('editPhoneNumber').value = phone;
       }
     }
 
     async function simpanProfil() {
       const fullName = document.getElementById('editFullName').value;
+      const phoneNumber = document.getElementById('editPhoneNumber').value;
       const avatarFile = document.getElementById('avatarFile').files[0];
       const status = document.getElementById('status');
       status.innerText = "Menyimpan profil...";
@@ -458,6 +463,7 @@
         id: currentUser.id,
         nama_lengkap: fullName,
         full_name: fullName,
+        phone_number: phoneNumber,
         avatar_url: avatarUrl
       });
 
@@ -525,13 +531,11 @@
       const list = document.getElementById('approvalList');
       list.innerHTML = "<small>Memuat data...</small>";
 
-      // Jika supervisor, hanya tampilkan anak magang dibawah koordinasinya (atau semua jika superadmin)
       let query = supabaseClient.from('requests').select('*, profiles(nama_lengkap, full_name, supervisor_id)').order('created_at', { ascending: false });
 
       const { data: reqs } = await query;
 
       if (reqs && reqs.length > 0) {
-        // Filter jika yang login adalah Supervisor biasa
         const filteredReqs = reqs.filter(r => {
           if (userProfile?.role === 'superadmin') return true;
           return r.profiles?.supervisor_id === currentUser.id;
@@ -585,9 +589,7 @@
       }
     }
 
-    /* FITUR FITUR KHUSUS SUPER ADMIN */
     async function muatMenuSuperAdmin() {
-      // 1. Load daftar supervisor
       const { data: spvs } = await supabaseClient.from('profiles').select('*').in('role', ['supervisor', 'superadmin']);
       listSupervisors = spvs || [];
 
@@ -595,7 +597,6 @@
       spvSelect.innerHTML = '<option value="">-- Tanpa Atasan Direct --</option>' + 
         listSupervisors.map(s => `<option value="${s.id}">${s.nama_lengkap || s.full_name} (${s.role.toUpperCase()})</option>`).join('');
 
-      // 2. Load daftar seluruh user untuk diedit
       const { data: allUsers } = await supabaseClient.from('profiles').select('*');
       const userListContainer = document.getElementById('adminUserList');
 
@@ -625,6 +626,7 @@
     async function superAdminRegisterUser() {
       const name = document.getElementById('adminNewName').value.trim();
       const email = document.getElementById('adminNewEmail').value.trim();
+      const phone = document.getElementById('adminNewPhone').value.trim();
       const password = document.getElementById('adminNewPassword').value;
       const role = document.getElementById('adminNewRole').value;
       const unit = document.getElementById('adminNewUnit').value.trim() || 'Umum';
@@ -635,7 +637,6 @@
 
       status.innerText = "Mendaftarkan akun baru...";
 
-      // Pendaftaran akun Supabase Auth
       const { data: authData, error: authErr } = await supabaseClient.auth.signUp({ email, password });
 
       if (authErr) {
@@ -643,11 +644,11 @@
       }
 
       if (authData?.user) {
-        // Upsert data profil dengan role, unit kerja, dan supervisor_id
         const { error: profErr } = await supabaseClient.from('profiles').upsert({
           id: authData.user.id,
           nama_lengkap: name,
           full_name: name,
+          phone_number: phone,
           role: role,
           unit_kerja: unit,
           supervisor_id: spvId
@@ -658,6 +659,7 @@
           status.innerHTML = `<span style='color:green'>Akun <b>${name}</b> (${role}) berhasil dibuat!</span>`;
           document.getElementById('adminNewName').value = '';
           document.getElementById('adminNewEmail').value = '';
+          document.getElementById('adminNewPhone').value = '';
           document.getElementById('adminNewPassword').value = '';
           document.getElementById('adminNewUnit').value = '';
           await muatMenuSuperAdmin();
@@ -686,22 +688,26 @@
 
     async function muatRekan() {
       const { data } = await supabaseClient.from('profiles').select('*');
+      const { data: { users } } = await supabaseClient.auth.getUser(); 
       const list = document.getElementById('rekanList');
+      
       if (data && data.length > 0) {
         list.innerHTML = data.map(r => {
           const namaRekan = r.nama_lengkap || r.full_name || 'Anak Magang';
           const roleRekan = (r.role || 'magang').toUpperCase();
           const unitRekan = r.unit_kerja || 'Umum';
+          const phoneRekan = r.phone_number || '-';
           const avatarRekan = (r.avatar_url && r.avatar_url.trim() !== "") 
             ? r.avatar_url 
             : `https://ui-avatars.com/api/?name=${encodeURIComponent(namaRekan)}&background=2563eb&color=fff`;
 
           return `
             <div class="list-item" style="display:flex; align-items:center; gap:10px;">
-              <img src="${avatarRekan}" style="width:35px; height:35px; border-radius:50%; object-fit:cover;">
+              <img src="${avatarRekan}" style="width:40px; height:40px; border-radius:50%; object-fit:cover;">
               <div>
-                <b>${namaRekan}</b><br>
-                <small style="color:#64748b;">Role: ${roleRekan} | Unit: ${unitRekan}</small>
+                <b>${namaRekan}</b> <small style="color:#2563eb;">(${roleRekan})</small><br>
+                <small style="color:#475569;">📞 WA/Telp: ${phoneRekan}</small><br>
+                <small style="color:#64748b;">🏢 Unit: ${unitRekan}</small>
               </div>
             </div>
           `;
