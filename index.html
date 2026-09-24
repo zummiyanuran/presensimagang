@@ -134,7 +134,7 @@
           </div>
         </div>
 
-        <textarea id="claimReqDesc" placeholder="Tuliskan alasan pengajuan presensi (Misal: Kendala GPS / Lupa Absen)..." rows="3"></textarea>
+        <textarea id="claimReqDesc" placeholder="Tuliskan alasan pengajuan presensi (Misal: Kendala GPS / Berada Di Luar Radius Kantor)..." rows="3"></textarea>
         <button class="btn-secondary" onclick="kirimPengajuan('claim_absen')">Kirim Pengajuan Presensi</button>
 
         <h4 style="margin-top:15px; margin-bottom:6px;">Riwayat Pengajuan Presensi Saya</h4>
@@ -244,11 +244,28 @@
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZXp0Z2RkY2tjeHBqc3JqZHBnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MDIxMzI5OCwiZXhwIjoyMTA1Nzg5Mjk4fQ.roOROpGyQQ8v18XUl7oXxz2CII86oe_oyc-wD6f-Cto";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    // KOORDINAT KANTOR MENTENG JAKARTA PUSAT (QRWP+C6 Menteng)
+    const OFFICE_LAT = -6.1964;
+    const OFFICE_LNG = 106.8355;
+    const MAX_RADIUS_KM = 2.0;
+
     let currentUser = null;
     let userProfile = null;
     let userAttendances = [];
     let userRequests = [];
     let listSupervisors = [];
+
+    // FUNGSI HITUNG JARAK HAVERSINE (KM)
+    function hitungJarak(lat1, lon1, lat2, lon2) {
+      const R = 6371; 
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c; 
+    }
 
     function formatTanggalLokal(dateObj) {
       const year = dateObj.getFullYear();
@@ -275,7 +292,7 @@
       } else if (val === 'Pulang') {
         boxMasuk.classList.add('hidden');
         boxPulang.classList.remove('hidden');
-      } else { // MasukDanPulang
+      } else { 
         boxMasuk.classList.remove('hidden');
         boxPulang.classList.remove('hidden');
       }
@@ -356,8 +373,32 @@
       navigator.geolocation.getCurrentPosition(async (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
-        const jam = new Date().toTimeString().split(' ')[0];
+        const jamSekarang = new Date().toTimeString().split(' ')[0].substring(0, 5); 
 
+        // Hitung jarak dari kantor Menteng
+        const jarakKm = hitungJarak(lat, lng, OFFICE_LAT, OFFICE_LNG);
+
+        // Jika Di Luar Radius 2 Km -> Alihkan ke Form Klaim Absen
+        if (jarakKm > MAX_RADIUS_KM) {
+          statusDiv.innerHTML = `<span style='color:orange'><b>Posisi Anda (${jarakKm.toFixed(2)} km) di luar radius kantor (2 km).</b><br>Mengarahkan ke Form Klaim Absen...</span>`;
+          
+          setTimeout(() => {
+            switchTab('ajukanAbsen');
+            document.getElementById('claimReqDate').value = formatTanggalLokal(new Date());
+            document.getElementById('claimType').value = tipeAbsen;
+            toggleTimeInputs();
+            
+            if (tipeAbsen === 'Masuk') document.getElementById('claimTimeMasuk').value = jamSekarang;
+            if (tipeAbsen === 'Pulang') document.getElementById('claimTimePulang').value = jamSekarang;
+            
+            document.getElementById('claimReqDesc').value = `Absen di luar radius kantor (${jarakKm.toFixed(2)} km). Alasan: `;
+            document.getElementById('claimReqDesc').focus();
+            statusDiv.innerHTML = `<span style='color:red'>Silakan isi alasan di bawah ini untuk dikirimkan ke Supervisor.</span>`;
+          }, 1500);
+          return;
+        }
+
+        // Jika Dalam Radius <= 2 Km -> Simpan Langsung
         let alamatTeks = "Lokasi GPS Terdeteksi";
         try {
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
@@ -369,7 +410,7 @@
           .from('attendances')
           .insert([{ 
             user_id: currentUser.id, 
-            jam_masuk: jam, 
+            jam_masuk: jamSekarang, 
             latitude: lat, 
             longitude: lng, 
             alamat: alamatTeks, 
@@ -380,7 +421,7 @@
 
         if (error) statusDiv.innerHTML = `<span style='color:red'>${error.message}</span>`;
         else {
-          statusDiv.innerHTML = `<span style='color:green'><b>Absen ${tipeAbsen} Berhasil!</b><br>📍 ${alamatTeks}</span>`;
+          statusDiv.innerHTML = `<span style='color:green'><b>Absen ${tipeAbsen} Berhasil! (${jarakKm.toFixed(2)} km dari kantor)</b><br>📍 ${alamatTeks}</span>`;
           await muatRiwayat();
           await muatJadwalShift();
         }
