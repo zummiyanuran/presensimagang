@@ -47,7 +47,7 @@
       <!-- TAB NAVIGASI -->
       <div class="nav-tabs">
         <button id="tabAbsenBtn" class="active" onclick="switchTab('absen')">Presensi</button>
-        <button id="tabIzinBtn" onclick="switchTab('izin')">Izin/Shift</button>
+        <button id="tabIzinBtn" onclick="switchTab('izin')">Izin</button>
         <button id="tabRekanBtn" onclick="switchTab('rekan')">Rekan</button>
         <button id="tabProfilBtn" onclick="switchTab('profil')">Profil</button>
       </div>
@@ -61,14 +61,11 @@
         <div id="riwayatList" style="max-height:150px; overflow-y:auto;"></div>
       </div>
 
-      <!-- TAB 2: IZIN / TUKAR SHIFT -->
+      <!-- TAB 2: FORM IZIN (KHUSUS IZIN SAJA) -->
       <div id="tabIzin" class="hidden">
-        <select id="reqType">
-          <option value="izin">Pengajuan Izin</option>
-          <option value="tukar_shift">Perubahan / Tukar Shift</option>
-        </select>
-        <textarea id="reqDesc" placeholder="Alasan pengajuan..." rows="3"></textarea>
-        <button class="btn-warning" onclick="kirimPengajuan()">Kirim Pengajuan</button>
+        <h4 style="margin-bottom:8px;">Form Pengajuan Izin</h4>
+        <textarea id="reqDesc" placeholder="Tuliskan alasan izin (Sakit, Acara Kampus, dll)..." rows="4"></textarea>
+        <button class="btn-warning" onclick="kirimPengajuan()">Kirim Pengajuan Izin</button>
       </div>
 
       <!-- TAB 3: DIREKTORI REKAN -->
@@ -148,12 +145,11 @@
       if (tabName === 'rekan') muatRekan();
     }
 
-    // --- FITUR PRESENSI (MASUK & PULANG) ---
     function catatPresensi(tipeAbsen) {
       const statusDiv = document.getElementById('status');
       if (!navigator.geolocation) return statusDiv.innerHTML = "<span style='color:red'>GPS tidak didukung.</span>";
 
-      statusDiv.innerText = `Mengambil lokasi untuk Absen ${tipeAbsen}...`;
+      statusDiv.innerText = `Mengambil lokasi Absen ${tipeAbsen}...`;
       navigator.geolocation.getCurrentPosition(async (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
@@ -206,7 +202,6 @@
       }
     }
 
-    // --- PROFIL & UPLOAD FOTO ---
     async function muatProfil() {
       const { data } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).single();
       if (data) {
@@ -233,7 +228,7 @@
           const { data: urlData } = supabaseClient.storage.from('profiles').getPublicUrl(filePath);
           avatarUrl = urlData.publicUrl;
         } else {
-          console.log("Upload error:", uploadErr);
+          console.log("Upload Storage Error:", uploadErr);
         }
       }
 
@@ -250,23 +245,21 @@
       }
     }
 
-    // --- FITUR IZIN ---
     async function kirimPengajuan() {
-      const type = document.getElementById('reqType').value;
-      const desc = document.getElementById('reqDesc').value;
+      const desc = document.getElementById('reqDesc').value.trim();
       const status = document.getElementById('status');
 
-      if (!desc) return status.innerHTML = "<span style='color:red'>Alasan wajib diisi!</span>";
+      if (!desc) return status.innerHTML = "<span style='color:red'>Alasan izin wajib diisi!</span>";
 
-      const { error } = await supabaseClient.from('requests').insert([{ user_id: currentUser.id, type, description: desc }]);
+      status.innerText = "Mengirim pengajuan izin...";
+      const { error } = await supabaseClient.from('requests').insert([{ user_id: currentUser.id, type: 'izin', description: desc }]);
       if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
       else {
-        status.innerHTML = "<span style='color:green'>Pengajuan berhasil dikirim!</span>";
+        status.innerHTML = "<span style='color:green'>Pengajuan izin berhasil dikirim!</span>";
         document.getElementById('reqDesc').value = "";
       }
     }
 
-    // --- FITUR DIREKTORI REKAN ---
     async function muatRekan() {
       const { data } = await supabaseClient.from('profiles').select('*');
       const list = document.getElementById('rekanList');
