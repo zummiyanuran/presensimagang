@@ -3,68 +3,158 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HRIS Presensi Online</title>
+  <title>HRIS Presensi Lokasi</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f4f6f9; }
-    .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; width: 320px; }
-    h2 { color: #333; margin-bottom: 20px; }
-    button { background-color: #007bff; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; }
-    button:hover { background-color: #0056b3; }
-    #status { margin-top: 20px; font-size: 14px; color: #555; word-break: break-word; }
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #eef2f5; }
+    .card { background: white; padding: 28px; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); width: 350px; text-align: center; }
+    h2 { margin-top: 0; color: #2c3e50; }
+    input { width: 100%; padding: 10px 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+    button { background: #2563eb; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; margin-top: 8px; transition: 0.2s; }
+    button:hover { background: #1d4ed8; }
+    .btn-secondary { background: #10b981; }
+    .btn-secondary:hover { background: #059669; }
+    .btn-danger { background: #ef4444; }
+    .btn-danger:hover { background: #dc2626; }
+    .hidden { display: none; }
+    #status { margin-top: 15px; font-size: 13px; word-break: break-word; }
+    .info-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px; border-radius: 6px; margin-bottom: 15px; }
   </style>
 </head>
 <body>
 
   <div class="card">
     <h2>HRIS Presensi</h2>
-    <p>Klik tombol di bawah untuk mencatat kehadiran berdasarkan koordinat GPS Anda.</p>
-    <button id="btnAbsen" onclick="catatPresensi()">Absen Masuk</button>
+
+    <!-- FORM AUTENTIKASI (LOGIN / REGISTRASI) -->
+    <div id="authSection">
+      <div class="info-box">
+        <small>Silakan masuk atau daftarkan akun baru Anda.</small>
+      </div>
+      <input type="email" id="email" placeholder="Email Karyawan">
+      <input type="password" id="password" placeholder="Password">
+      <button onclick="login()">Masuk</button>
+      <button class="btn-secondary" onclick="register()">Daftar Akun Baru</button>
+    </div>
+
+    <!-- DASHBOARD PRESENSI LOKASI -->
+    <div id="presensiSection" class="hidden">
+      <div class="info-box">
+        <span>Pengguna:</span><br>
+        <b id="userEmail"></b>
+      </div>
+      <button id="btnAbsen" onclick="catatPresensi()">Absen Masuk via GPS</button>
+      <button class="btn-danger" onclick="logout()">Keluar / Logout</button>
+    </div>
+
     <div id="status"></div>
   </div>
 
   <script>
-    // GANTI DENGAN DATA SUPABASE MILIKMU
+    // --- MASUKKAN DATA SUPABASE KAMU DI SINI ---
     const SUPABASE_URL = https://dreztgddckcxpjsrjdpg.supabase.co;
     const SUPABASE_KEY = sb_publishable_bAcaxTomi0g2l6vElrZREA_bUG4pqm0;
 
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    // 1. Cek Sesi Login Karyawan
+    async function checkAuth() {
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      if (user) {
+        document.getElementById('authSection').classList.add('hidden');
+        document.getElementById('presensiSection').classList.remove('hidden');
+        document.getElementById('userEmail').innerText = user.email;
+      }
+    }
+    checkAuth();
+
+    // 2. Fungsi Registrasi Akun Baru
+    async function register() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const status = document.getElementById('status');
+
+      if (!email || !password) {
+        status.innerHTML = `<span style="color:red">Email dan Password wajib diisi!</span>`;
+        return;
+      }
+
+      status.innerText = "Mendaftarkan akun...";
+      const { data, error } = await supabaseClient.auth.signUp({ email, password });
+
+      if (error) {
+        status.innerHTML = `<span style="color:red">Gagal Daftar: ${error.message}</span>`;
+      } else {
+        status.innerHTML = `<span style="color:green">Akun berhasil dibuat! Silakan klik tombol **Masuk**.</span>`;
+      }
+    }
+
+    // 3. Fungsi Login
+    async function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const status = document.getElementById('status');
+
+      if (!email || !password) {
+        status.innerHTML = `<span style="color:red">Email dan Password wajib diisi!</span>`;
+        return;
+      }
+
+      status.innerText = "Memverifikasi akun...";
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        status.innerHTML = `<span style="color:red">Login Gagal: ${error.message}</span>`;
+      } else {
+        location.reload();
+      }
+    }
+
+    // 4. Fungsi Logout
+    async function logout() {
+      await supabaseClient.auth.signOut();
+      location.reload();
+    }
+
+    // 5. Presensi Berbasis Lokasi (GPS)
     function catatPresensi() {
       const statusDiv = document.getElementById('status');
       const btn = document.getElementById('btnAbsen');
 
       if (!navigator.geolocation) {
-        statusDiv.innerHTML = "<span style='color:red;'>Geolocation tidak didukung browser ini.</span>";
+        statusDiv.innerHTML = "<span style='color:red;'>Browser Anda tidak mendukung Geolocation GPS.</span>";
         return;
       }
 
       btn.disabled = true;
-      statusDiv.innerText = "Mendapatkan lokasi GPS...";
+      statusDiv.innerText = "Mengambil koordinat lokasi GPS Anda...";
 
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
           const jam = new Date().toTimeString().split(' ')[0];
+          const { data: { user } } = await supabaseClient.auth.getUser();
 
-          statusDiv.innerText = "Menyimpan ke database...";
+          statusDiv.innerText = "Menyimpan data presensi...";
 
-          const { data, error } = await supabaseClient
+          const { error } = await supabaseClient
             .from('attendances')
-            .insert([{ jam_masuk: jam, latitude: lat, longitude: lng, status: 'Hadir' }]);
+            .insert([{ user_id: user.id, jam_masuk: jam, latitude: lat, longitude: lng, status: 'Hadir' }]);
 
           if (error) {
-            statusDiv.innerHTML = `<span style='color:red;'>Gagal: ${error.message}</span>`;
+            statusDiv.innerHTML = `<span style='color:red;'>Gagal menyimpan: ${error.message}</span>`;
           } else {
-            statusDiv.innerHTML = `<span style='color:green;'><b>Presensi Berhasil!</b><br>Jam: ${jam}<br>Lat: ${lat.toFixed(5)}, Long: ${lng.toFixed(5)}</span>`;
+            statusDiv.innerHTML = `<span style='color:green;'><b>Presensi Berhasil!</b><br>Jam: ${jam}<br>Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}</span>`;
           }
           btn.disabled = false;
         },
         (err) => {
-          statusDiv.innerHTML = `<span style='color:red;'>Gagal mengambil lokasi: ${err.message}</span>`;
+          statusDiv.innerHTML = `<span style='color:red;'>Izin Lokasi Ditolak/Gagal: ${err.message}. Pastikan GPS aktif dan izinkan lokasi pada browser.</span>`;
           btn.disabled = false;
-        }
+        },
+        { enableHighAccuracy: true }
       );
     }
   </script>
