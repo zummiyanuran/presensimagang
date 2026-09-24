@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HRIS Magang Komnas Perempuan</title>
+  <title>SIM SDM Magang Komnas Perempuan</title>
   <!-- Supabase JS -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <!-- SheetJS untuk Export Excel -->
@@ -58,7 +58,7 @@
 <body>
 
   <div class="card">
-    <h2>HRIS Magang</h2>
+    <h2>SIM SDM Magang</h2>
 
     <!-- FORM AUTENTIKASI -->
     <div id="authSection">
@@ -78,7 +78,7 @@
       <div class="nav-tabs">
         <button id="tabAbsenBtn" class="active" onclick="switchTab('absen')">Presensi</button>
         <button id="tabShiftBtn" onclick="switchTab('shift')">Jadwal Shift</button>
-        <button id="tabAjukanAbsenBtn" onclick="switchTab('ajukanAbsen')">Klaim Absen</button>
+        <button id="tabAjukanAbsenBtn" onclick="switchTab('ajukanAbsen')">Klaim Presensi</button>
         <button id="tabIzinBtn" onclick="switchTab('izin')">Izin</button>
         <button id="tabTukarShiftBtn" onclick="switchTab('tukarShift')">Tukar Shift</button>
 
@@ -98,8 +98,8 @@
         
         <div class="today-shift-badge" id="todayShiftDisplay">⏰ Shift Hari Ini: Memuat...</div>
 
-        <button id="btnMasuk" onclick="catatPresensi('Masuk')">Absen Masuk via GPS</button>
-        <button id="btnPulang" class="btn-pulang" onclick="catatPresensi('Pulang')">Absen Pulang via GPS</button>
+        <button id="btnMasuk" onclick="catatPresensi('Masuk')">Clockin</button>
+        <button id="btnPulang" class="btn-pulang" onclick="catatPresensi('Pulang')">Clockout</button>
         
         <h4 style="margin-top:15px; margin-bottom:6px;">Riwayat Harian Saya</h4>
         <div id="riwayatList" style="max-height:160px; overflow-y:auto;"></div>
@@ -126,9 +126,9 @@
 
         <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Tipe Absen:</label>
         <select id="claimType" onchange="toggleTimeInputs()">
-          <option value="Masuk">Absen Masuk</option>
-          <option value="Pulang">Absen Pulang</option>
-          <option value="MasukDanPulang">Masuk & Pulang Sekaligus</option>
+          <option value="Masuk">Clockin</option>
+          <option value="Pulang">Clockout</option>
+          <option value="MasukDanPulang">Clockin dan Clockout</option>
         </select>
 
         <div class="time-container">
@@ -405,7 +405,7 @@
       const statusDiv = document.getElementById('status');
       if (!navigator.geolocation) return statusDiv.innerHTML = "<span style='color:red'>GPS tidak didukung.</span>";
 
-      statusDiv.innerText = `Mengambil lokasi Absen ${tipeAbsen}...`;
+      statusDiv.innerText = `Mengambil lokasi presensi ${tipeAbsen}...`;
       navigator.geolocation.getCurrentPosition(async (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
@@ -476,9 +476,9 @@
       const btnPulang = document.getElementById('btnPulang');
 
       btnMasuk.disabled = false;
-      btnMasuk.innerText = "Absen Masuk via GPS";
+      btnMasuk.innerText = "Clockin";
       btnPulang.disabled = false;
-      btnPulang.innerText = "Absen Pulang via GPS";
+      btnPulang.innerText = "Clockout";
 
       const tglHariIni = formatTanggalLokal(new Date());
 
@@ -524,7 +524,7 @@
           tglDisplay: tglDisplay,
           tipe: tipeClaim,
           jam: jamClaim,
-          lokasi: 'Klaim Absen Disetujui',
+          lokasi: 'Klaim Presensi Disetujui',
           sumber: 'Klaim'
         });
       });
@@ -534,11 +534,11 @@
       presensiHariIni.forEach(p => {
         if (p.tipe === 'Masuk') {
           btnMasuk.disabled = true;
-          btnMasuk.innerText = p.sumber === 'Klaim' ? "Sudah Absen Masuk (Disetujui)" : "Sudah Absen Masuk Hari Ini";
+          btnMasuk.innerText = p.sumber === 'Klaim' ? "Sudah Clockin (Disetujui)" : "Sudah Clockin Hari Ini";
         }
         if (p.tipe === 'Pulang') {
           btnPulang.disabled = true;
-          btnPulang.innerText = p.sumber === 'Klaim' ? "Sudah Absen Pulang (Disetujui)" : "Sudah Absen Pulang Hari Ini";
+          btnPulang.innerText = p.sumber === 'Klaim' ? "Sudah Clockout (Disetujui)" : "Sudah Clockout Hari Ini";
         }
       });
 
@@ -844,7 +844,7 @@
               user_id: currentUser.id,
               type: 'claim_absen',
               shift_choice: `Masuk (${timeMasuk})`,
-              description: `[Tanggal: ${selectedDate}] Klaim Absen Masuk (${timeMasuk}) - ${desc}`,
+              description: `[Tanggal: ${selectedDate}] Klaim Clockin (${timeMasuk}) - ${desc}`,
               date: selectedDate,
               status: 'Pending'
             },
@@ -852,7 +852,7 @@
               user_id: currentUser.id,
               type: 'claim_absen',
               shift_choice: `Pulang (${timePulang})`,
-              description: `[Tanggal: ${selectedDate}] Klaim Absen Pulang (${timePulang}) - ${desc}`,
+              description: `[Tanggal: ${selectedDate}] Klaim Clockout (${timePulang}) - ${desc}`,
               date: selectedDate,
               status: 'Pending'
             }
@@ -882,7 +882,7 @@
       status.innerText = "Mengirim pengajuan...";
       let fullDescription = `[Tanggal: ${selectedDate}] ${desc}`;
       if (jenisType === 'shift') fullDescription = `[Tanggal: ${selectedDate}] Perubahan ke ${shiftChoice} - ${desc}`;
-      if (jenisType === 'claim_absen') fullDescription = `[Tanggal: ${selectedDate}] Klaim Absen ${shiftChoice} - ${desc}`;
+      if (jenisType === 'claim_absen') fullDescription = `[Tanggal: ${selectedDate}] Klaim Presensi ${shiftChoice} - ${desc}`;
 
       const { error } = await supabaseClient.from('requests').insert([{ 
         user_id: currentUser.id, 
@@ -1040,7 +1040,7 @@
           
           let tipeJenis = 'IZIN';
           if (item.type === 'shift') tipeJenis = 'TUKAR SHIFT';
-          if (item.type === 'claim_absen') tipeJenis = 'KLAIM ABSEN';
+          if (item.type === 'claim_absen') tipeJenis = 'KLAIM PRESENSI';
 
           let badgeClass = 'badge-pending';
           if (st === 'Disetujui') badgeClass = 'badge-approved';
