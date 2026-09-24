@@ -25,7 +25,7 @@
     #status { margin-top: 12px; font-size: 12px; word-break: break-word; }
     .profile-img { width: 75px; height: 75px; border-radius: 50%; object-fit: cover; border: 2px solid #2563eb; display: block; margin: 0 auto 10px; background-color: #e2e8f0; }
     .nav-tabs { display: flex; gap: 4px; margin-bottom: 15px; flex-wrap: wrap; }
-    .nav-tabs button { padding: 6px 2px; font-size: 10px; margin: 0; background: #e2e8f0; color: #334155; flex: 1; border-radius: 4px; min-width: 55px; }
+    .nav-tabs button { padding: 6px 2px; font-size: 10px; margin: 0; background: #e2e8f0; color: #334155; flex: 1; border-radius: 4px; min-width: 50px; }
     .nav-tabs button.active { background: #2563eb; color: white; }
     .list-item { background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 6px; margin-bottom: 6px; font-size: 11px; text-align: left; }
     .date-badge { background: #f1f5f9; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 12px; display: inline-block; }
@@ -63,6 +63,7 @@
         <button id="tabAbsenBtn" class="active" onclick="switchTab('absen')">Presensi</button>
         <button id="tabShiftBtn" onclick="switchTab('shift')">Jadwal Shift</button>
         <button id="tabIzinBtn" onclick="switchTab('izin')">Izin</button>
+        <button id="tabTukarShiftBtn" onclick="switchTab('tukarShift')">Tukar Shift</button>
 
         <!-- TAB KHUSUS SUPERVISOR -->
         <button id="tabApproveBtn" class="hidden" onclick="switchTab('approve')" style="background:#f59e0b; color:white;">Persetujuan</button>
@@ -97,19 +98,38 @@
         <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Pilih Tanggal Izin:</label>
         <input type="date" id="reqDate">
         <textarea id="reqDesc" placeholder="Tuliskan alasan izin (Sakit, Acara Kampus, dll)..." rows="3"></textarea>
-        <button class="btn-warning" onclick="kirimPengajuan()">Kirim Pengajuan Izin</button>
+        <button class="btn-warning" onclick="kirimPengajuan('izin')">Kirim Pengajuan Izin</button>
 
         <h4 style="margin-top:15px; margin-bottom:6px;">Riwayat Status Izin Saya</h4>
         <div id="riwayatIzinList" style="max-height:140px; overflow-y:auto;"></div>
       </div>
 
-      <!-- TAB KHUSUS SUPERVISOR: PERSETUJUAN IZIN -->
+      <!-- TAB 4: FORM PERUBAHAN SHIFT -->
+      <div id="tabTukarShift" class="hidden">
+        <h4 style="margin-bottom:8px;">Form Pengajuan Perubahan Shift</h4>
+        <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Pilih Tanggal Perubahan Shift:</label>
+        <input type="date" id="shiftReqDate">
+
+        <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Pilih Shift Baru:</label>
+        <select id="shiftChoice">
+          <option value="Shift FT (09.00 - 17.00)">Shift FT (09.00 - 17.00)</option>
+          <option value="Shift EM (08.00 - 16.00)">Shift EM (08.00 - 16.00)</option>
+        </select>
+
+        <textarea id="shiftReqDesc" placeholder="Tuliskan alasan perubahan shift..." rows="3"></textarea>
+        <button class="btn-secondary" onclick="kirimPengajuan('shift')">Kirim Pengajuan Shift</button>
+
+        <h4 style="margin-top:15px; margin-bottom:6px;">Riwayat Perubahan Shift Saya</h4>
+        <div id="riwayatShiftList" style="max-height:140px; overflow-y:auto;"></div>
+      </div>
+
+      <!-- TAB KHUSUS SUPERVISOR: PERSETUJUAN -->
       <div id="tabApprove" class="hidden">
-        <h4 style="margin-bottom:8px;">Daftar Pengajuan Izin Anak Magang</h4>
+        <h4 style="margin-bottom:8px;">Daftar Pengajuan Anak Magang</h4>
         <div id="approvalList" style="max-height:250px; overflow-y:auto;"></div>
       </div>
 
-      <!-- TAB KHUSUS SUPER ADMIN: KELOLA AKUN & UNIT KERJA -->
+      <!-- TAB KHUSUS SUPER ADMIN -->
       <div id="tabAdmin" class="hidden">
         <h4 style="margin-bottom:8px;">Manajemen Akun & Hirarki</h4>
         
@@ -142,13 +162,13 @@
         <div id="adminUserList" style="max-height:200px; overflow-y:auto;"></div>
       </div>
 
-      <!-- TAB 4: DIREKTORI REKAN -->
+      <!-- TAB 5: DIREKTORI REKAN -->
       <div id="tabRekan" class="hidden">
         <h4>Daftar Rekan Magang</h4>
         <div id="rekanList" style="max-height:220px; overflow-y:auto;"></div>
       </div>
 
-      <!-- TAB 5: PROFIL & FOTO -->
+      <!-- TAB 6: PROFIL & FOTO -->
       <div id="tabProfil" class="hidden">
         <input type="text" id="editFullName" placeholder="Nama Lengkap Kamu">
         <input type="tel" id="editPhoneNumber" placeholder="Nomor Telepon / WA">
@@ -192,6 +212,7 @@
       const hariIni = new Date().toLocaleDateString('id-ID', opsi);
       document.getElementById('currentDateDisplay').innerText = hariIni;
       document.getElementById('reqDate').value = formatTanggalLokal(new Date());
+      document.getElementById('shiftReqDate').value = formatTanggalLokal(new Date());
     }
 
     async function checkAuth() {
@@ -205,6 +226,7 @@
         await muatRiwayat();
         await muatJadwalShift();
         await muatRiwayatIzin();
+        await muatRiwayatShift();
       }
     }
     checkAuth();
@@ -225,7 +247,7 @@
     }
 
     function switchTab(tabName) {
-      ['absen', 'shift', 'izin', 'approve', 'admin', 'rekan', 'profil'].forEach(t => {
+      ['absen', 'shift', 'izin', 'tukarShift', 'approve', 'admin', 'rekan', 'profil'].forEach(t => {
         const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
         const btn = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1) + 'Btn');
         if (el) el.classList.add('hidden');
@@ -240,6 +262,7 @@
       if (tabName === 'rekan') muatRekan();
       if (tabName === 'shift') muatJadwalShift();
       if (tabName === 'izin') muatRiwayatIzin();
+      if (tabName === 'tukarShift') muatRiwayatShift();
       if (tabName === 'approve') muatDaftarPersetujuan();
       if (tabName === 'admin') muatMenuSuperAdmin();
     }
@@ -385,7 +408,7 @@
           html += `
             <div class="shift-card">
               <b>${opsiTgl}</b>: <span style="color:#16a34a; font-weight:bold;">09:00 - 17:00</span>
-              <small style="display:block; color:#15803d;">Shift Reguler Magang</small>
+              <small style="display:block; color:#15803d;">Shift Reguler Magang (FT)</small>
               ${detailAbsenHtml}
             </div>
           `;
@@ -440,72 +463,80 @@
       }
     }
 
-async function simpanProfil() {
-  const fullName = document.getElementById('editFullName').value;
-  const phoneNumber = document.getElementById('editPhoneNumber').value;
-  const avatarFile = document.getElementById('avatarFile').files[0];
-  const status = document.getElementById('status');
-  status.innerText = "Menyimpan profil...";
-
-  let avatarUrl = userProfile?.avatar_url || '';
-
-  if (avatarFile) {
-    const fileExt = avatarFile.name.split('.').pop();
-    const filePath = `${currentUser.id}.${fileExt}`;
-
-    // Upload file dengan mematikan cache & mengizinkan overwrite
-    const { error: uploadErr } = await supabaseClient.storage
-      .from('profiles')
-      .upload(filePath, avatarFile, { upsert: true, cacheControl: '0' });
-
-    if (!uploadErr) {
-      const { data: urlData } = supabaseClient.storage.from('profiles').getPublicUrl(filePath);
-      // Tambahkan timestamp query parameter agar gambar langsung ter-refresh
-      avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
-    } else {
-      console.log("Upload Storage Error:", uploadErr);
-    }
-  }
-
-  const { error } = await supabaseClient.from('profiles').upsert({
-    id: currentUser.id,
-    nama_lengkap: fullName,
-    full_name: fullName,
-    phone_number: phoneNumber,
-    avatar_url: avatarUrl
-  });
-
-  if (error) {
-    status.innerHTML = `<span style='color:red'>${error.message}</span>`;
-  } else {
-    status.innerHTML = "<span style='color:green'>Profil & Foto berhasil diperbarui!</span>";
-    await muatProfil();
-  }
-}
-
-    async function kirimPengajuan() {
-      const selectedDate = document.getElementById('reqDate').value;
-      const desc = document.getElementById('reqDesc').value.trim();
+    async function simpanProfil() {
+      const fullName = document.getElementById('editFullName').value;
+      const phoneNumber = document.getElementById('editPhoneNumber').value;
+      const avatarFile = document.getElementById('avatarFile').files[0];
       const status = document.getElementById('status');
+      status.innerText = "Menyimpan profil...";
 
-      if (!selectedDate) return status.innerHTML = "<span style='color:red'>Tanggal izin wajib dipilih!</span>";
-      if (!desc) return status.innerHTML = "<span style='color:red'>Alasan izin wajib diisi!</span>";
+      let avatarUrl = userProfile?.avatar_url || '';
 
-      status.innerText = "Mengirim pengajuan izin...";
-      const fullDescription = `[Tanggal: ${selectedDate}] ${desc}`;
+      if (avatarFile) {
+        const fileExt = avatarFile.name.split('.').pop();
+        const filePath = `${currentUser.id}.${fileExt}`;
+        const { error: uploadErr } = await supabaseClient.storage.from('profiles').upload(filePath, avatarFile, { upsert: true, cacheControl: '0' });
+        if (!uploadErr) {
+          const { data: urlData } = supabaseClient.storage.from('profiles').getPublicUrl(filePath);
+          avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+        }
+      }
+
+      const { error } = await supabaseClient.from('profiles').upsert({
+        id: currentUser.id,
+        nama_lengkap: fullName,
+        full_name: fullName,
+        phone_number: phoneNumber,
+        avatar_url: avatarUrl
+      });
+
+      if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
+      else {
+        status.innerHTML = "<span style='color:green'>Profil & Foto berhasil diperbarui!</span>";
+        await muatProfil();
+      }
+    }
+
+    async function kirimPengajuan(jenisType) {
+      const status = document.getElementById('status');
+      let selectedDate = '';
+      let desc = '';
+      let shiftChoice = null;
+
+      if (jenisType === 'izin') {
+        selectedDate = document.getElementById('reqDate').value;
+        desc = document.getElementById('reqDesc').value.trim();
+      } else {
+        selectedDate = document.getElementById('shiftReqDate').value;
+        desc = document.getElementById('shiftReqDesc').value.trim();
+        shiftChoice = document.getElementById('shiftChoice').value;
+      }
+
+      if (!selectedDate) return status.innerHTML = "<span style='color:red'>Tanggal wajib dipilih!</span>";
+      if (!desc) return status.innerHTML = "<span style='color:red'>Alasan wajib diisi!</span>";
+
+      status.innerText = "Mengirim pengajuan...";
+      const fullDescription = shiftChoice ? `[Tanggal: ${selectedDate}] Perubahan ke ${shiftChoice} - ${desc}` : `[Tanggal: ${selectedDate}] ${desc}`;
 
       const { error } = await supabaseClient.from('requests').insert([{ 
         user_id: currentUser.id, 
-        type: 'izin', 
+        type: jenisType, 
+        shift_choice: shiftChoice,
         description: fullDescription,
+        date: selectedDate,
         status: 'Pending'
       }]);
 
       if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
       else {
-        status.innerHTML = "<span style='color:green'>Pengajuan izin berhasil dikirim!</span>";
-        document.getElementById('reqDesc').value = "";
-        await muatRiwayatIzin();
+        status.innerHTML = "<span style='color:green'>Pengajuan berhasil dikirim!</span>";
+        if (jenisType === 'izin') {
+          document.getElementById('reqDesc').value = "";
+          await muatRiwayatIzin();
+        } else {
+          document.getElementById('shiftReqDesc').value = "";
+          await muatRiwayatShift();
+        }
       }
     }
 
@@ -515,6 +546,7 @@ async function simpanProfil() {
         .from('requests')
         .select('*')
         .eq('user_id', currentUser.id)
+        .eq('type', 'izin')
         .order('created_at', { ascending: false });
 
       if (data && data.length > 0) {
@@ -536,6 +568,34 @@ async function simpanProfil() {
       }
     }
 
+    async function muatRiwayatShift() {
+      const list = document.getElementById('riwayatShiftList');
+      const { data } = await supabaseClient
+        .from('requests')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .eq('type', 'shift')
+        .order('created_at', { ascending: false });
+
+      if (data && data.length > 0) {
+        list.innerHTML = data.map(item => {
+          let badgeClass = 'badge-pending';
+          const st = item.status || 'Pending';
+          if (st === 'Disetujui') badgeClass = 'badge-approved';
+          if (st === 'Ditolak') badgeClass = 'badge-rejected';
+
+          return `
+            <div class="list-item">
+              <div><b>Keterangan:</b> ${item.description || '-'}</div>
+              <div style="margin-top:4px;">Status: <span class="${badgeClass}">${st}</span></div>
+            </div>
+          `;
+        }).join('');
+      } else {
+        list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan perubahan shift.</small>";
+      }
+    }
+
     async function muatDaftarPersetujuan() {
       const list = document.getElementById('approvalList');
       list.innerHTML = "<small>Memuat data...</small>";
@@ -551,20 +611,21 @@ async function simpanProfil() {
         });
 
         if (filteredReqs.length === 0) {
-          list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan izin dari anak magang bimbingan Anda.</small>";
+          list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan dari anak magang bimbingan Anda.</small>";
           return;
         }
 
         list.innerHTML = filteredReqs.map(item => {
           const pemohon = item.profiles?.nama_lengkap || item.profiles?.full_name || 'Anak Magang';
           const st = item.status || 'Pending';
+          const tipeJenis = (item.type || 'Izin').toUpperCase();
           let badgeClass = 'badge-pending';
           if (st === 'Disetujui') badgeClass = 'badge-approved';
           if (st === 'Ditolak') badgeClass = 'badge-rejected';
 
           return `
             <div class="list-item">
-              <div><b>Pemohon:</b> ${pemohon}</div>
+              <div><b>Pemohon:</b> ${pemohon} <small style="color:#2563eb;">(${tipeJenis})</small></div>
               <div><b>Detail:</b> ${item.description || '-'}</div>
               <div style="margin-top:4px;">Status: <span class="${badgeClass}">${st}</span></div>
               
@@ -578,7 +639,7 @@ async function simpanProfil() {
           `;
         }).join('');
       } else {
-        list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan izin.</small>";
+        list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan.</small>";
       }
     }
 
@@ -593,7 +654,7 @@ async function simpanProfil() {
 
       if (error) statusDiv.innerHTML = `<span style='color:red'>${error.message}</span>`;
       else {
-        statusDiv.innerHTML = `<span style='color:green'>Status izin berhasil diubah menjadi <b>${statusBaru}</b>!</span>`;
+        statusDiv.innerHTML = `<span style='color:green'>Status berhasil diubah menjadi <b>${statusBaru}</b>!</span>`;
         await muatDaftarPersetujuan();
       }
     }
@@ -697,7 +758,6 @@ async function simpanProfil() {
 
     async function muatRekan() {
       const { data } = await supabaseClient.from('profiles').select('*');
-      const { data: { users } } = await supabaseClient.auth.getUser(); 
       const list = document.getElementById('rekanList');
       
       if (data && data.length > 0) {
