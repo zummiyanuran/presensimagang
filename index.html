@@ -8,7 +8,7 @@
   <style>
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #eef2f5; padding: 20px 0; }
-    .card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); width: 440px; text-align: center; }
+    .card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); width: 450px; text-align: center; }
     h2, h3, h4 { margin-top: 0; color: #2c3e50; }
     input, select, textarea { width: 100%; padding: 9px; margin: 5px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
     button { background: #2563eb; color: white; border: none; padding: 10px; width: 100%; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; margin-top: 6px; }
@@ -25,10 +25,11 @@
     #status { margin-top: 12px; font-size: 12px; word-break: break-word; }
     .profile-img { width: 75px; height: 75px; border-radius: 50%; object-fit: cover; border: 2px solid #2563eb; display: block; margin: 0 auto 10px; background-color: #e2e8f0; }
     .nav-tabs { display: flex; gap: 4px; margin-bottom: 15px; flex-wrap: wrap; }
-    .nav-tabs button { padding: 6px 2px; font-size: 10px; margin: 0; background: #e2e8f0; color: #334155; flex: 1; border-radius: 4px; min-width: 50px; }
+    .nav-tabs button { padding: 6px 2px; font-size: 10px; margin: 0; background: #e2e8f0; color: #334155; flex: 1; border-radius: 4px; min-width: 45px; }
     .nav-tabs button.active { background: #2563eb; color: white; }
     .list-item { background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 6px; margin-bottom: 6px; font-size: 11px; text-align: left; }
-    .date-badge { background: #f1f5f9; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 12px; display: inline-block; }
+    .date-badge { background: #f1f5f9; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px; display: inline-block; }
+    .today-shift-badge { background: #e0f2fe; border: 1px solid #bae6fd; color: #0369a1; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; margin-bottom: 14px; display: block; }
     .shift-card { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 8px; border-radius: 6px; margin-bottom: 6px; font-size: 11px; text-align: left; }
     .shift-off { background: #fef2f2; border: 1px solid #fecaca; }
     .absen-info { margin-top: 4px; padding-top: 4px; border-top: 1px dashed #cbd5e1; font-weight: bold; color: #1e293b; }
@@ -66,6 +67,7 @@
       <div class="nav-tabs">
         <button id="tabAbsenBtn" class="active" onclick="switchTab('absen')">Presensi</button>
         <button id="tabShiftBtn" onclick="switchTab('shift')">Jadwal Shift</button>
+        <button id="tabAjukanAbsenBtn" onclick="switchTab('ajukanAbsen')">Klaim Absen</button>
         <button id="tabIzinBtn" onclick="switchTab('izin')">Izin</button>
         <button id="tabTukarShiftBtn" onclick="switchTab('tukarShift')">Tukar Shift</button>
 
@@ -82,6 +84,8 @@
       <!-- TAB 1: PRESENSI -->
       <div id="tabAbsen">
         <div class="date-badge" id="currentDateDisplay">Memuat Tanggal...</div>
+        
+        <div class="today-shift-badge" id="todayShiftDisplay">⏰ Shift Hari Ini: Memuat...</div>
 
         <button id="btnMasuk" onclick="catatPresensi('Masuk')">Absen Masuk via GPS</button>
         <button id="btnPulang" class="btn-pulang" onclick="catatPresensi('Pulang')">Absen Pulang via GPS</button>
@@ -94,7 +98,6 @@
       <div id="tabShift" class="hidden">
         <h4 style="margin-bottom:6px;">Jadwal Shift & Presensi Bulanan</h4>
         
-        <!-- KOTAK PILIHAN BULAN DAN TAHUN -->
         <div class="filter-month-box">
           <label for="monthPicker">Pilih Bulan & Tahun:</label>
           <input type="month" id="monthPicker" onchange="muatJadwalShift()">
@@ -103,7 +106,26 @@
         <div id="shiftList" style="max-height:220px; overflow-y:auto;"></div>
       </div>
 
-      <!-- TAB 3: FORM & STATUS IZIN -->
+      <!-- TAB 3: FORM PENGAJUAN PRESENSI (KLAIM ABSEN / LUPA ABSEN) -->
+      <div id="tabAjukanAbsen" class="hidden">
+        <h4 style="margin-bottom:8px;">Form Pengajuan Presensi Susulan</h4>
+        <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Pilih Tanggal Presensi:</label>
+        <input type="date" id="claimReqDate">
+
+        <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Tipe Absen:</label>
+        <select id="claimType">
+          <option value="Masuk">Absen Masuk</option>
+          <option value="Pulang">Absen Pulang</option>
+        </select>
+
+        <textarea id="claimReqDesc" placeholder="Tuliskan alasan pengajuan presensi (Misal: Kendala GPS / Lupa Absen)..." rows="3"></textarea>
+        <button class="btn-secondary" onclick="kirimPengajuan('claim_absen')">Kirim Pengajuan Presensi</button>
+
+        <h4 style="margin-top:15px; margin-bottom:6px;">Riwayat Pengajuan Presensi Saya</h4>
+        <div id="riwayatClaimList" style="max-height:140px; overflow-y:auto;"></div>
+      </div>
+
+      <!-- TAB 4: FORM & STATUS IZIN -->
       <div id="tabIzin" class="hidden">
         <h4 style="margin-bottom:8px;">Form Pengajuan Izin</h4>
         <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Pilih Tanggal Izin:</label>
@@ -115,7 +137,7 @@
         <div id="riwayatIzinList" style="max-height:140px; overflow-y:auto;"></div>
       </div>
 
-      <!-- TAB 4: FORM PERUBAHAN SHIFT -->
+      <!-- TAB 5: FORM PERUBAHAN SHIFT -->
       <div id="tabTukarShift" class="hidden">
         <h4 style="margin-bottom:8px;">Form Pengajuan Perubahan Shift</h4>
         <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Pilih Tanggal Perubahan Shift:</label>
@@ -128,7 +150,7 @@
         </select>
 
         <textarea id="shiftReqDesc" placeholder="Tuliskan alasan perubahan shift..." rows="3"></textarea>
-        <button class="btn-secondary" onclick="kirimPengajuan('shift')">Kirim Pengajuan Shift</button>
+        <button class="btn-purple" onclick="kirimPengajuan('shift')">Kirim Pengajuan Shift</button>
 
         <h4 style="margin-top:15px; margin-bottom:6px;">Riwayat Perubahan Shift Saya</h4>
         <div id="riwayatShiftList" style="max-height:140px; overflow-y:auto;"></div>
@@ -173,13 +195,13 @@
         <div id="adminUserList" style="max-height:200px; overflow-y:auto;"></div>
       </div>
 
-      <!-- TAB 5: DIREKTORI REKAN -->
+      <!-- TAB 6: DIREKTORI REKAN -->
       <div id="tabRekan" class="hidden">
         <h4>Daftar Rekan Magang</h4>
         <div id="rekanList" style="max-height:220px; overflow-y:auto;"></div>
       </div>
 
-      <!-- TAB 6: PROFIL & FOTO -->
+      <!-- TAB 7: PROFIL & FOTO -->
       <div id="tabProfil" class="hidden">
         <input type="text" id="editFullName" placeholder="Nama Lengkap Kamu">
         <input type="tel" id="editPhoneNumber" placeholder="Nomor Telepon / WA">
@@ -232,6 +254,7 @@
       document.getElementById('currentDateDisplay').innerText = hariIni;
       document.getElementById('reqDate').value = formatTanggalLokal(new Date());
       document.getElementById('shiftReqDate').value = formatTanggalLokal(new Date());
+      document.getElementById('claimReqDate').value = formatTanggalLokal(new Date());
       inisialisasiDefaultBulan();
     }
 
@@ -245,9 +268,11 @@
         await muatProfil();
         await muatRiwayat();
         await muatUserRequests();
+        await muatShiftHariIni();
         await muatJadwalShift();
         await muatRiwayatIzin();
         await muatRiwayatShift();
+        await muatRiwayatClaim();
       }
     }
     checkAuth();
@@ -268,7 +293,7 @@
     }
 
     function switchTab(tabName) {
-      ['absen', 'shift', 'izin', 'tukarShift', 'approve', 'admin', 'rekan', 'profil'].forEach(t => {
+      ['absen', 'shift', 'ajukanAbsen', 'izin', 'tukarShift', 'approve', 'admin', 'rekan', 'profil'].forEach(t => {
         const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
         const btn = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1) + 'Btn');
         if (el) el.classList.add('hidden');
@@ -280,8 +305,10 @@
       if (activeEl) activeEl.classList.remove('hidden');
       if (activeBtn) activeBtn.classList.add('active');
 
+      if (tabName === 'absen') { muatUserRequests().then(() => muatShiftHariIni()); }
       if (tabName === 'rekan') muatRekan();
       if (tabName === 'shift') { muatUserRequests().then(() => muatJadwalShift()); }
+      if (tabName === 'ajukanAbsen') muatRiwayatClaim();
       if (tabName === 'izin') muatRiwayatIzin();
       if (tabName === 'tukarShift') muatRiwayatShift();
       if (tabName === 'approve') muatDaftarPersetujuan();
@@ -384,6 +411,54 @@
       userRequests = data || [];
     }
 
+    async function muatShiftHariIni() {
+      const display = document.getElementById('todayShiftDisplay');
+      const skrg = new Date();
+      const tglHariIni = formatTanggalLokal(skrg);
+      const dayOfWeek = skrg.getDay();
+
+      const bersihkanTanggal = (str) => {
+        if (!str) return '';
+        if (str.includes('T')) return str.split('T')[0];
+        return str.trim();
+      };
+
+      let liburNasional = [];
+      try {
+        const res = await fetch(`https://dayoffapi.vercel.app/api?month=${skrg.getMonth() + 1}&year=${skrg.getFullYear()}`);
+        const dataLibur = await res.json();
+        if (Array.isArray(dataLibur)) {
+          liburNasional = dataLibur.filter(l => l.is_holiday).map(l => l.holiday_date);
+        }
+      } catch (e) { console.log("Gagal memuat libur", e); }
+
+      const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+      const isHariLibur = liburNasional.includes(tglHariIni);
+
+      if (isWeekend || isHariLibur) {
+        display.innerHTML = "⏰ Shift Hari Ini: <span style='color:#dc2626;'>LIBUR</span>";
+        return;
+      }
+
+      const reqIzinHariIni = userRequests.find(r => r.type === 'izin' && r.status === 'Disetujui' && (bersihkanTanggal(r.date) === tglHariIni || (r.description && r.description.includes(tglHariIni))));
+      if (reqIzinHariIni) {
+        display.innerHTML = "⏰ Shift Hari Ini: <span style='color:#d97706;'>IZIN DISETUJUI</span>";
+        return;
+      }
+
+      const reqShiftHariIni = userRequests.find(r => r.type === 'shift' && r.status === 'Disetujui' && (bersihkanTanggal(r.date) === tglHariIni || (r.description && r.description.includes(tglHariIni))));
+      let jamShiftText = "09:00 - 17:00 (FT)";
+
+      if (reqShiftHariIni) {
+        const detailTeks = reqShiftHariIni.shift_choice || reqShiftHariIni.description || '';
+        if (detailTeks.includes('EM') || detailTeks.includes('08.00')) {
+          jamShiftText = "08:00 - 16:00 (EM)";
+        }
+      }
+
+      display.innerHTML = `⏰ Shift Hari Ini: <b>${jamShiftText}</b>`;
+    }
+
     async function muatJadwalShift() {
       const container = document.getElementById('shiftList');
       const selectedMonthVal = document.getElementById('monthPicker').value;
@@ -426,14 +501,21 @@
         const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
         const isHariLibur = liburNasional.includes(tglStr);
 
+        // 1. Presensi Langsung via GPS
         const presensiHariIni = userAttendances.filter(a => bersihkanTanggal(a.created_at) === tglStr);
-        const absenMasuk = presensiHariIni.find(a => a.tipe === 'Masuk');
-        const absenPulang = presensiHariIni.find(a => a.tipe === 'Pulang');
+        let absenMasuk = presensiHariIni.find(a => a.tipe === 'Masuk');
+        let absenPulang = presensiHariIni.find(a => a.tipe === 'Pulang');
+
+        // 2. Cek Klaim Presensi Susulan
+        const reqClaimHariIni = userRequests.filter(r => r.type === 'claim_absen' && r.status === 'Disetujui' && (bersihkanTanggal(r.date) === tglStr || (r.description && r.description.includes(tglStr))));
+        
+        let claimMasukInfo = reqClaimHariIni.find(c => c.shift_choice === 'Masuk' || (c.description && c.description.includes('Masuk')));
+        let claimPulangInfo = reqClaimHariIni.find(c => c.shift_choice === 'Pulang' || (c.description && c.description.includes('Pulang')));
 
         let detailAbsenHtml = '<div class="absen-info">📌 Presensi: -</div>';
-        if (absenMasuk || absenPulang) {
-          const masukStr = absenMasuk ? `Masuk: ${absenMasuk.jam_masuk}` : 'Masuk: -';
-          const pulangStr = absenPulang ? `Pulang: ${absenPulang.jam_masuk}` : 'Pulang: -';
+        if (absenMasuk || absenPulang || claimMasukInfo || claimPulangInfo) {
+          const masukStr = absenMasuk ? `Masuk: ${absenMasuk.jam_masuk}` : (claimMasukInfo ? `Masuk: (Klaim Diacc)` : 'Masuk: -');
+          const pulangStr = absenPulang ? `Pulang: ${absenPulang.jam_masuk}` : (claimPulangInfo ? `Pulang: (Klaim Diacc)` : 'Pulang: -');
           detailAbsenHtml = `<div class="absen-info">📌 ${masukStr} | ${pulangStr}</div>`;
         }
 
@@ -580,17 +662,23 @@
       if (jenisType === 'izin') {
         selectedDate = document.getElementById('reqDate').value;
         desc = document.getElementById('reqDesc').value.trim();
-      } else {
+      } else if (jenisType === 'shift') {
         selectedDate = document.getElementById('shiftReqDate').value;
         desc = document.getElementById('shiftReqDesc').value.trim();
         shiftChoice = document.getElementById('shiftChoice').value;
+      } else if (jenisType === 'claim_absen') {
+        selectedDate = document.getElementById('claimReqDate').value;
+        desc = document.getElementById('claimReqDesc').value.trim();
+        shiftChoice = document.getElementById('claimType').value;
       }
 
       if (!selectedDate) return status.innerHTML = "<span style='color:red'>Tanggal wajib dipilih!</span>";
       if (!desc) return status.innerHTML = "<span style='color:red'>Alasan wajib diisi!</span>";
 
       status.innerText = "Mengirim pengajuan...";
-      const fullDescription = shiftChoice ? `[Tanggal: ${selectedDate}] Perubahan ke ${shiftChoice} - ${desc}` : `[Tanggal: ${selectedDate}] ${desc}`;
+      let fullDescription = `[Tanggal: ${selectedDate}] ${desc}`;
+      if (jenisType === 'shift') fullDescription = `[Tanggal: ${selectedDate}] Perubahan ke ${shiftChoice} - ${desc}`;
+      if (jenisType === 'claim_absen') fullDescription = `[Tanggal: ${selectedDate}] Klaim Absen ${shiftChoice} - ${desc}`;
 
       const { error } = await supabaseClient.from('requests').insert([{ 
         user_id: currentUser.id, 
@@ -607,11 +695,15 @@
         if (jenisType === 'izin') {
           document.getElementById('reqDesc').value = "";
           await muatRiwayatIzin();
-        } else {
+        } else if (jenisType === 'shift') {
           document.getElementById('shiftReqDesc').value = "";
           await muatRiwayatShift();
+        } else if (jenisType === 'claim_absen') {
+          document.getElementById('claimReqDesc').value = "";
+          await muatRiwayatClaim();
         }
         await muatUserRequests();
+        await muatShiftHariIni();
         await muatJadwalShift();
       }
     }
@@ -672,6 +764,34 @@
       }
     }
 
+    async function muatRiwayatClaim() {
+      const list = document.getElementById('riwayatClaimList');
+      const { data } = await supabaseClient
+        .from('requests')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .eq('type', 'claim_absen')
+        .order('created_at', { ascending: false });
+
+      if (data && data.length > 0) {
+        list.innerHTML = data.map(item => {
+          let badgeClass = 'badge-pending';
+          const st = item.status || 'Pending';
+          if (st === 'Disetujui') badgeClass = 'badge-approved';
+          if (st === 'Ditolak') badgeClass = 'badge-rejected';
+
+          return `
+            <div class="list-item">
+              <div><b>Keterangan:</b> ${item.description || '-'}</div>
+              <div style="margin-top:4px;">Status: <span class="status-badge-info ${badgeClass}">${st}</span></div>
+            </div>
+          `;
+        }).join('');
+      } else {
+        list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan presensi susulan.</small>";
+      }
+    }
+
     async function muatDaftarPersetujuan() {
       const list = document.getElementById('approvalList');
       list.innerHTML = "<small>Memuat data...</small>";
@@ -712,7 +832,11 @@
           const pemohonProfile = profilesMap[item.user_id];
           const pemohon = pemohonProfile?.nama_lengkap || pemohonProfile?.full_name || 'Anak Magang';
           const st = item.status || 'Pending';
-          const tipeJenis = (item.type || 'Izin').toUpperCase();
+          
+          let tipeJenis = 'IZIN';
+          if (item.type === 'shift') tipeJenis = 'TUKAR SHIFT';
+          if (item.type === 'claim_absen') tipeJenis = 'KLAIM ABSEN';
+
           let badgeClass = 'badge-pending';
           if (st === 'Disetujui') badgeClass = 'badge-approved';
           if (st === 'Ditolak') badgeClass = 'badge-rejected';
