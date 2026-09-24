@@ -4,11 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HRIS Magang Komnas Perempuan</title>
+  <!-- Supabase JS -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <!-- SheetJS untuk Export Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- jsPDF & AutoTable untuk Export PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
   <style>
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #eef2f5; padding: 20px 0; }
-    .card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); width: 450px; text-align: center; }
+    .card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); width: 480px; text-align: center; }
     h2, h3, h4 { margin-top: 0; color: #2c3e50; }
     input, select, textarea { width: 100%; padding: 9px; margin: 5px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
     button { background: #2563eb; color: white; border: none; padding: 10px; width: 100%; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; margin-top: 6px; }
@@ -19,6 +26,8 @@
     .btn-secondary { background: #10b981; }
     .btn-warning { background: #f59e0b; }
     .btn-purple { background: #8b5cf6; }
+    .btn-excel { background: #16a34a; font-size: 11px; padding: 6px 10px; width: auto; }
+    .btn-pdf { background: #dc2626; font-size: 11px; padding: 6px 10px; width: auto; }
     .btn-approve { background: #16a34a; padding: 4px 8px; font-size: 11px; margin-top: 4px; width: auto; }
     .btn-reject { background: #dc2626; padding: 4px 8px; font-size: 11px; margin-top: 4px; width: auto; }
     .hidden { display: none; }
@@ -41,7 +50,7 @@
     .unit-badge { display: inline-block; background: #fef3c7; color: #b45309; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; margin-bottom: 8px; }
     .filter-month-box { background: #f8fafc; padding: 8px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .filter-month-box label { font-size: 11px; font-weight: bold; color: #334155; }
-    .filter-month-box input { width: auto; margin: 0; padding: 4px 8px; font-size: 12px; }
+    .filter-month-box input, .filter-month-box select { width: auto; margin: 0; padding: 4px 8px; font-size: 12px; }
     .time-container { display: flex; gap: 8px; text-align: left; }
     .time-container div { flex: 1; }
   </style>
@@ -122,7 +131,6 @@
           <option value="MasukDanPulang">Masuk & Pulang Sekaligus</option>
         </select>
 
-        <!-- INPUT DYNAMIC JAM PRESENSI -->
         <div class="time-container">
           <div id="boxJamMasuk">
             <label style="font-size:11px; display:block; margin-top:4px;">Jam Masuk:</label>
@@ -134,7 +142,7 @@
           </div>
         </div>
 
-        <textarea id="claimReqDesc" placeholder="Tuliskan alasan pengajuan presensi (Misal: Kendala GPS / Berada Di Luar Radius Kantor)..." rows="3"></textarea>
+        <textarea id="claimReqDesc" placeholder="Tuliskan alasan pengajuan presensi..." rows="3"></textarea>
         <button class="btn-secondary" onclick="kirimPengajuan('claim_absen')">Kirim Pengajuan Presensi</button>
 
         <h4 style="margin-top:15px; margin-bottom:6px;">Riwayat Pengajuan Presensi Saya</h4>
@@ -180,10 +188,31 @@
 
       <!-- TAB KHUSUS SUPER ADMIN -->
       <div id="tabAdmin" class="hidden">
-        <h4 style="margin-bottom:8px;">Manajemen Akun & Hirarki</h4>
+        <h4 style="margin-bottom:8px;">Rekap Presensi Keseluruhan (Super Admin)</h4>
         
+        <!-- FILTER REKAP PRESENSI ALL MAGANG -->
         <div style="background:#f1f5f9; padding:10px; border-radius:8px; text-align:left; margin-bottom:12px;">
-          <b style="font-size:12px;">Pendaftaran Akun Baru</b>
+          <label style="font-size:11px; font-weight:bold;">Filter Anak Magang:</label>
+          <select id="adminFilterMagang" onchange="muatRekapPresensiSuperAdmin()">
+            <option value="ALL">-- Semua Anak Magang --</option>
+          </select>
+
+          <label style="font-size:11px; font-weight:bold; margin-top:6px; display:block;">Filter Bulan & Tahun:</label>
+          <input type="month" id="adminFilterBulan" onchange="muatRekapPresensiSuperAdmin()">
+
+          <div style="display:flex; gap:6px; margin-top:8px;">
+            <button class="btn-excel" onclick="exportToExcel()">📊 Export Excel</button>
+            <button class="btn-pdf" onclick="exportToPDF()">📄 Export PDF</button>
+          </div>
+        </div>
+
+        <h4 style="margin-bottom:6px;">Data Rekap Presensi</h4>
+        <div id="adminRekapList" style="max-height:180px; overflow-y:auto;"></div>
+
+        <hr style="margin: 15px 0; border:0; border-top: 1px solid #e2e8f0;">
+
+        <h4 style="margin-bottom:8px;">Manajemen Akun Baru</h4>
+        <div style="background:#f8fafc; padding:10px; border-radius:8px; text-align:left; margin-bottom:12px;">
           <input type="text" id="adminNewName" placeholder="Nama Lengkap">
           <input type="email" id="adminNewEmail" placeholder="Email Pengguna">
           <input type="tel" id="adminNewPhone" placeholder="Nomor Telepon / WA">
@@ -208,7 +237,7 @@
         </div>
 
         <h4 style="margin-bottom:6px;">Kelola Akun & Penugasan</h4>
-        <div id="adminUserList" style="max-height:200px; overflow-y:auto;"></div>
+        <div id="adminUserList" style="max-height:160px; overflow-y:auto;"></div>
       </div>
 
       <!-- TAB 6: DIREKTORI REKAN -->
@@ -244,7 +273,6 @@
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZXp0Z2RkY2tjeHBqc3JqZHBnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MDIxMzI5OCwiZXhwIjoyMTA1Nzg5Mjk4fQ.roOROpGyQQ8v18XUl7oXxz2CII86oe_oyc-wD6f-Cto";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // KOORDINAT KANTOR MENTENG JAKARTA PUSAT (QRWP+C6 Menteng)
     const OFFICE_LAT = -6.1964;
     const OFFICE_LNG = 106.8355;
     const MAX_RADIUS_KM = 2.0;
@@ -254,6 +282,7 @@
     let userAttendances = [];
     let userRequests = [];
     let listSupervisors = [];
+    let dataExportSuperAdmin = [];
 
     function hitungJarak(lat1, lon1, lat2, lon2) {
       const R = 6371; 
@@ -278,6 +307,7 @@
       const yyyy = skrg.getFullYear();
       const mm = String(skrg.getMonth() + 1).padStart(2, '0');
       document.getElementById('monthPicker').value = `${yyyy}-${mm}`;
+      document.getElementById('adminFilterBulan').value = `${yyyy}-${mm}`;
     }
 
     function toggleTimeInputs() {
@@ -366,7 +396,7 @@
       if (tabName === 'izin') muatRiwayatIzin();
       if (tabName === 'tukarShift') muatRiwayatShift();
       if (tabName === 'approve') muatDaftarPersetujuan();
-      if (tabName === 'admin') muatMenuSuperAdmin();
+      if (tabName === 'admin') { muatMenuSuperAdmin(); muatRekapPresensiSuperAdmin(); }
     }
 
     function catatPresensi(tipeAbsen) {
@@ -456,7 +486,6 @@
         return str.trim();
       };
 
-      // Gabungkan presensi langsung via GPS + klaim yang DISETUJU
       let gabunganRiwayat = [];
 
       userAttendances.forEach(item => {
@@ -471,7 +500,6 @@
         });
       });
 
-      // Tambahkan Klaim Absen yang Disetujui
       const claimApprovedList = userRequests.filter(r => r.type === 'claim_absen' && r.status === 'Disetujui');
       claimApprovedList.forEach(c => {
         const tglClaim = bersihkanTanggal(c.date);
@@ -499,7 +527,6 @@
         });
       });
 
-      // Cek Status Absen Hari Ini untuk Disable Tombol
       const presensiHariIni = gabunganRiwayat.filter(g => g.tanggal === tglHariIni);
       
       presensiHariIni.forEach(p => {
@@ -624,12 +651,10 @@
         const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
         const isHariLibur = liburNasional.includes(tglStr);
 
-        // 1. Presensi Langsung via GPS
         const presensiHariIni = userAttendances.filter(a => bersihkanTanggal(a.created_at) === tglStr);
         let absenMasuk = presensiHariIni.find(a => a.tipe === 'Masuk');
         let absenPulang = presensiHariIni.find(a => a.tipe === 'Pulang');
 
-        // 2. Cek Klaim Presensi Susulan
         const reqClaimHariIni = userRequests.filter(r => r.type === 'claim_absen' && r.status === 'Disetujui' && (bersihkanTanggal(r.date) === tglStr || (r.description && r.description.includes(tglStr))));
         
         let claimMasukInfo = reqClaimHariIni.find(c => c.shift_choice && c.shift_choice.includes('Masuk'));
@@ -1064,8 +1089,14 @@
         listSupervisors.map(s => `<option value="${s.id}">${s.nama_lengkap || s.full_name} (${s.role.toUpperCase()})</option>`).join('');
 
       const { data: allUsers } = await supabaseClient.from('profiles').select('*');
-      const userListContainer = document.getElementById('adminUserList');
+      
+      const adminMagangSelect = document.getElementById('adminFilterMagang');
+      if (allUsers && allUsers.length > 0) {
+        adminMagangSelect.innerHTML = '<option value="ALL">-- Semua Anak Magang --</option>' + 
+          allUsers.filter(u => (u.role || 'magang') === 'magang').map(u => `<option value="${u.id}">${u.nama_lengkap || u.full_name}</option>`).join('');
+      }
 
+      const userListContainer = document.getElementById('adminUserList');
       if (allUsers && allUsers.length > 0) {
         userListContainer.innerHTML = allUsers.map(u => {
           const namaUser = u.nama_lengkap || u.full_name || 'Pengguna';
@@ -1087,6 +1118,141 @@
       } else {
         userListContainer.innerHTML = "<small>Tidak ada pengguna terdaftar.</small>";
       }
+    }
+
+    async function muatRekapPresensiSuperAdmin() {
+      const container = document.getElementById('adminRekapList');
+      container.innerHTML = "<small>Memuat rekap presensi...</small>";
+
+      const filterUser = document.getElementById('adminFilterMagang').value;
+      const filterBulanVal = document.getElementById('adminFilterBulan').value; 
+
+      let tahun, bulan;
+      if (filterBulanVal) {
+        const parts = filterBulanVal.split('-');
+        tahun = parseInt(parts[0]);
+        bulan = parseInt(parts[1]) - 1;
+      } else {
+        const skrg = new Date();
+        tahun = skrg.getFullYear();
+        bulan = skrg.getMonth();
+      }
+
+      const { data: allUsers } = await supabaseClient.from('profiles').select('*');
+      const usersMap = {};
+      if (allUsers) allUsers.forEach(u => usersMap[u.id] = u);
+
+      const { data: attendances } = await supabaseClient.from('attendances').select('*');
+      const { data: requests } = await supabaseClient.from('requests').select('*');
+
+      const bersihkanTanggal = (str) => {
+        if (!str) return '';
+        if (str.includes('T')) return str.split('T')[0];
+        return str.trim();
+      };
+
+      dataExportSuperAdmin = [];
+
+      let listMagangIds = Object.keys(usersMap).filter(id => (usersMap[id].role || 'magang') === 'magang');
+      if (filterUser !== 'ALL') {
+        listMagangIds = listMagangIds.filter(id => id === filterUser);
+      }
+
+      const jumlahHari = new Date(tahun, bulan + 1, 0).getDate();
+
+      listMagangIds.forEach(uId => {
+        const mUser = usersMap[uId];
+        const nama = mUser?.nama_lengkap || mUser?.full_name || 'Anak Magang';
+        const unit = mUser?.unit_kerja || 'Umum';
+
+        for (let day = 1; day <= jumlahHari; day++) {
+          const d = new Date(tahun, bulan, day);
+          const tglStr = formatTanggalLokal(d);
+          const opsiTgl = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+
+          const attHariIni = (attendances || []).filter(a => a.user_id === uId && bersihkanTanggal(a.created_at) === tglStr);
+          const absenMasuk = attHariIni.find(a => a.tipe === 'Masuk');
+          const absenPulang = attHariIni.find(a => a.tipe === 'Pulang');
+
+          const reqHariIni = (requests || []).filter(r => r.user_id === uId && (bersihkanTanggal(r.date) === tglStr || (r.description && r.description.includes(tglStr))));
+          const claimApproved = reqHariIni.filter(r => r.type === 'claim_absen' && r.status === 'Disetujui');
+          const izinApproved = reqHariIni.find(r => r.type === 'izin' && r.status === 'Disetujui');
+
+          let claimMasukInfo = claimApproved.find(c => c.shift_choice && c.shift_choice.includes('Masuk'));
+          let claimPulangInfo = claimApproved.find(c => c.shift_choice && c.shift_choice.includes('Pulang'));
+
+          let jamMasuk = '-';
+          let jamPulang = '-';
+          let statusAbsen = 'Tidak Hadir';
+
+          if (absenMasuk) jamMasuk = absenMasuk.jam_masuk;
+          else if (claimMasukInfo) {
+            const m = claimMasukInfo.shift_choice.match(/\((.*?)\)/);
+            jamMasuk = m ? `${m[1]} (Klaim)` : 'Klaim';
+          }
+
+          if (absenPulang) jamPulang = absenPulang.jam_masuk;
+          else if (claimPulangInfo) {
+            const m = claimPulangInfo.shift_choice.match(/\((.*?)\)/);
+            jamPulang = m ? `${m[1]} (Klaim)` : 'Klaim';
+          }
+
+          if (jamMasuk !== '-' || jamPulang !== '-') statusAbsen = 'Hadir';
+          if (izinApproved) statusAbsen = 'Izin (Disetujui)';
+
+          if (statusAbsen !== 'Tidak Hadir' || (d.getDay() !== 0 && d.getDay() !== 6)) {
+            dataExportSuperAdmin.push({
+              tanggal: opsiTgl,
+              nama: nama,
+              unit: unit,
+              jamMasuk: jamMasuk,
+              jamPulang: jamPulang,
+              status: statusAbsen
+            });
+          }
+        }
+      });
+
+      if (dataExportSuperAdmin.length > 0) {
+        container.innerHTML = dataExportSuperAdmin.map(row => `
+          <div class="list-item">
+            <b>${row.nama}</b> (${row.unit}) - <small>${row.tanggal}</small><br>
+            📌 Masuk: ${row.jamMasuk} | Pulang: ${row.jamPulang}<br>
+            Status: <span class="status-badge-info ${row.status.includes('Hadir')?'badge-approved':'badge-pending'}">${row.status}</span>
+          </div>
+        `).join('');
+      } else {
+        container.innerHTML = "<small style='color:#64748b;'>Tidak ada data presensi pada periode ini.</small>";
+      }
+    }
+
+    function exportToExcel() {
+      if (dataExportSuperAdmin.length === 0) return alert("Tidak ada data untuk diexport!");
+      const ws = XLSX.utils.json_to_sheet(dataExportSuperAdmin);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Rekap Presensi");
+      XLSX.writeFile(wb, `Rekap_Presensi_Magang_${Date.now()}.xlsx`);
+    }
+
+    function exportToPDF() {
+      if (dataExportSuperAdmin.length === 0) return alert("Tidak ada data untuk diexport!");
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.text("Rekap Presensi Magang Komnas Perempuan", 14, 15);
+      
+      const tableData = dataExportSuperAdmin.map(row => [
+        row.tanggal, row.nama, row.unit, row.jamMasuk, row.jamPulang, row.status
+      ]);
+
+      doc.autoTable({
+        head: [['Tanggal', 'Nama Pemohon', 'Unit Kerja', 'Jam Masuk', 'Jam Pulang', 'Status']],
+        body: tableData,
+        startY: 22,
+        styles: { fontSize: 8 }
+      });
+
+      doc.save(`Rekap_Presensi_Magang_${Date.now()}.pdf`);
     }
 
     async function superAdminRegisterUser() {
