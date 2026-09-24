@@ -255,7 +255,6 @@
     let userRequests = [];
     let listSupervisors = [];
 
-    // FUNGSI HITUNG JARAK HAVERSINE (KM)
     function hitungJarak(lat1, lon1, lat2, lon2) {
       const R = 6371; 
       const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -316,8 +315,8 @@
         document.getElementById('mainDashboard').classList.remove('hidden');
         tampilkanTanggalHariIni();
         await muatProfil();
-        await muatRiwayat();
         await muatUserRequests();
+        await muatRiwayat();
         await muatShiftHariIni();
         await muatJadwalShift();
         await muatRiwayatIzin();
@@ -355,7 +354,12 @@
       if (activeEl) activeEl.classList.remove('hidden');
       if (activeBtn) activeBtn.classList.add('active');
 
-      if (tabName === 'absen') { muatUserRequests().then(() => muatShiftHariIni()); }
+      if (tabName === 'absen') { 
+        muatUserRequests().then(() => {
+          muatRiwayat();
+          muatShiftHariIni();
+        }); 
+      }
       if (tabName === 'rekan') muatRekan();
       if (tabName === 'shift') { muatUserRequests().then(() => muatJadwalShift()); }
       if (tabName === 'ajukanAbsen') muatRiwayatClaim();
@@ -375,10 +379,8 @@
         const lng = pos.coords.longitude;
         const jamSekarang = new Date().toTimeString().split(' ')[0].substring(0, 5); 
 
-        // Hitung jarak dari kantor Menteng
         const jarakKm = hitungJarak(lat, lng, OFFICE_LAT, OFFICE_LNG);
 
-        // Jika Di Luar Radius 2 Km -> Alihkan ke Form Klaim Absen
         if (jarakKm > MAX_RADIUS_KM) {
           statusDiv.innerHTML = `<span style='color:orange'><b>Posisi Anda (${jarakKm.toFixed(2)} km) di luar radius kantor (2 km).</b><br>Mengarahkan ke Form Klaim Absen...</span>`;
           
@@ -398,7 +400,6 @@
           return;
         }
 
-        // Jika Dalam Radius <= 2 Km -> Simpan Langsung
         let alamatTeks = "Lokasi GPS Terdeteksi";
         try {
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
@@ -422,6 +423,7 @@
         if (error) statusDiv.innerHTML = `<span style='color:red'>${error.message}</span>`;
         else {
           statusDiv.innerHTML = `<span style='color:green'><b>Absen ${tipeAbsen} Berhasil! (${jarakKm.toFixed(2)} km dari kantor)</b><br>📍 ${alamatTeks}</span>`;
+          await muatUserRequests();
           await muatRiwayat();
           await muatJadwalShift();
         }
@@ -448,30 +450,77 @@
 
       const tglHariIni = formatTanggalLokal(new Date());
 
-      if (userAttendances.length > 0) {
-        list.innerHTML = userAttendances.map(item => {
-          const d = new Date(item.created_at || Date.now());
-          const tglFormat = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-          
-          const tglItem = formatTanggalLokal(d);
-          if (tglItem === tglHariIni) {
-            if (item.tipe === 'Masuk') {
-              btnMasuk.disabled = true;
-              btnMasuk.innerText = "Sudah Absen Masuk Hari Ini";
-            }
-            if (item.tipe === 'Pulang') {
-              btnPulang.disabled = true;
-              btnPulang.innerText = "Sudah Absen Pulang Hari Ini";
-            }
-          }
+      const bersihkanTanggal = (str) => {
+        if (!str) return '';
+        if (str.includes('T')) return str.split('T')[0];
+        return str.trim();
+      };
 
-          return `
-            <div class="list-item">
-              <b>${tglFormat}</b> - Absen ${item.tipe || 'Masuk'} (${item.jam_masuk || ''})<br>
-              <small>📍 ${item.alamat || (item.latitude + ', ' + item.longitude)}</small>
-            </div>
-          `;
-        }).join('');
+      // Gabungkan presensi langsung via GPS + klaim yang DISETUJU
+      let gabunganRiwayat = [];
+
+      userAttendances.forEach(item => {
+        const d = new Date(item.created_at || Date.now());
+        gabunganRiwayat.push({
+          tanggal: formatTanggalLokal(d),
+          tglDisplay: d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+          tipe: item.tipe || 'Masuk',
+          jam: item.jam_masuk || '-',
+          lokasi: item.alamat || (item.latitude + ', ' + item.longitude),
+          sumber: 'GPS'
+        });
+      });
+
+      // Tambahkan Klaim Absen yang Disetujui
+      const claimApprovedList = userRequests.filter(r => r.type === 'claim_absen' && r.status === 'Disetujui');
+      claimApprovedList.forEach(c => {
+        const tglClaim = bersihkanTanggal(c.date);
+        const d = new Date(tglClaim + 'T00:00:00');
+        const tglDisplay = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        
+        let tipeClaim = 'Masuk';
+        let jamClaim = '-';
+        
+        if (c.shift_choice) {
+          if (c.shift_choice.includes('Masuk')) tipeClaim = 'Masuk';
+          if (c.shift_choice.includes('Pulang')) tipeClaim = 'Pulang';
+          
+          const matchJam = c.shift_choice.match(/\((.*?)\)/);
+          if (matchJam) jamClaim = matchJam[1];
+        }
+
+        gabunganRiwayat.push({
+          tanggal: tglClaim,
+          tglDisplay: tglDisplay,
+          tipe: tipeClaim,
+          jam: jamClaim,
+          lokasi: 'Klaim Absen Disetujui',
+          sumber: 'Klaim'
+        });
+      });
+
+      // Cek Status Absen Hari Ini untuk Disable Tombol
+      const presensiHariIni = gabunganRiwayat.filter(g => g.tanggal === tglHariIni);
+      
+      presensiHariIni.forEach(p => {
+        if (p.tipe === 'Masuk') {
+          btnMasuk.disabled = true;
+          btnMasuk.innerText = p.sumber === 'Klaim' ? "Sudah Absen Masuk (Disetujui)" : "Sudah Absen Masuk Hari Ini";
+        }
+        if (p.tipe === 'Pulang') {
+          btnPulang.disabled = true;
+          btnPulang.innerText = p.sumber === 'Klaim' ? "Sudah Absen Pulang (Disetujui)" : "Sudah Absen Pulang Hari Ini";
+        }
+      });
+
+      if (gabunganRiwayat.length > 0) {
+        list.innerHTML = gabunganRiwayat.map(item => `
+          <div class="list-item">
+            <b>${item.tglDisplay}</b> - Absen ${item.tipe} (${item.jam}) 
+            ${item.sumber === 'Klaim' ? '<span class="status-badge-info badge-approved">KLAIM DIACC</span>' : ''}<br>
+            <small>📍 ${item.lokasi}</small>
+          </div>
+        `).join('');
       } else {
         list.innerHTML = "<small style='color:#64748b;'>Belum ada riwayat presensi.</small>";
       }
@@ -583,14 +632,25 @@
         // 2. Cek Klaim Presensi Susulan
         const reqClaimHariIni = userRequests.filter(r => r.type === 'claim_absen' && r.status === 'Disetujui' && (bersihkanTanggal(r.date) === tglStr || (r.description && r.description.includes(tglStr))));
         
-        let claimMasukInfo = reqClaimHariIni.find(c => c.shift_choice === 'Masuk' || (c.description && c.description.includes('Masuk')));
-        let claimPulangInfo = reqClaimHariIni.find(c => c.shift_choice === 'Pulang' || (c.description && c.description.includes('Pulang')));
+        let claimMasukInfo = reqClaimHariIni.find(c => c.shift_choice && c.shift_choice.includes('Masuk'));
+        let claimPulangInfo = reqClaimHariIni.find(c => c.shift_choice && c.shift_choice.includes('Pulang'));
 
         let detailAbsenHtml = '<div class="absen-info">📌 Presensi: -</div>';
         if (absenMasuk || absenPulang || claimMasukInfo || claimPulangInfo) {
-          const jamMasukVal = absenMasuk ? absenMasuk.jam_masuk : (claimMasukInfo ? claimMasukInfo.shift_choice || 'Diacc' : '-');
-          const jamPulangVal = absenPulang ? absenPulang.jam_masuk : (claimPulangInfo ? claimPulangInfo.shift_choice || 'Diacc' : '-');
-          
+          let jamMasukVal = '-';
+          if (absenMasuk) jamMasukVal = absenMasuk.jam_masuk;
+          else if (claimMasukInfo) {
+            const match = claimMasukInfo.shift_choice.match(/\((.*?)\)/);
+            jamMasukVal = match ? `${match[1]} (Diacc)` : 'Diacc';
+          }
+
+          let jamPulangVal = '-';
+          if (absenPulang) jamPulangVal = absenPulang.jam_masuk;
+          else if (claimPulangInfo) {
+            const match = claimPulangInfo.shift_choice.match(/\((.*?)\)/);
+            jamPulangVal = match ? `${match[1]} (Diacc)` : 'Diacc';
+          }
+
           detailAbsenHtml = `<div class="absen-info">📌 Masuk: ${jamMasukVal} | Pulang: ${jamPulangVal}</div>`;
         }
 
@@ -776,8 +836,9 @@
           else {
             status.innerHTML = "<span style='color:green'>Pengajuan Masuk & Pulang sekaligus berhasil dikirim!</span>";
             document.getElementById('claimReqDesc').value = "";
-            await muatRiwayatClaim();
             await muatUserRequests();
+            await muatRiwayatClaim();
+            await muatRiwayat();
             await muatShiftHariIni();
             await muatJadwalShift();
           }
@@ -819,6 +880,7 @@
           await muatRiwayatClaim();
         }
         await muatUserRequests();
+        await muatRiwayat();
         await muatShiftHariIni();
         await muatJadwalShift();
       }
