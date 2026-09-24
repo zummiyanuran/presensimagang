@@ -78,6 +78,8 @@
       <!-- TAB 3: FORM IZIN -->
       <div id="tabIzin" class="hidden">
         <h4 style="margin-bottom:8px;">Form Pengajuan Izin</h4>
+        <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Pilih Tanggal Izin:</label>
+        <input type="date" id="reqDate">
         <textarea id="reqDesc" placeholder="Tuliskan alasan izin (Sakit, Acara Kampus, dll)..." rows="4"></textarea>
         <button class="btn-warning" onclick="kirimPengajuan()">Kirim Pengajuan Izin</button>
       </div>
@@ -121,6 +123,7 @@
       const opsi = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
       const hariIni = new Date().toLocaleDateString('id-ID', opsi);
       document.getElementById('currentDateDisplay').innerText = hariIni;
+      document.getElementById('reqDate').value = formatTanggalLokal(new Date());
     }
 
     async function checkAuth() {
@@ -290,7 +293,6 @@
         const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
         const isHariLibur = liburNasional.includes(tglStr);
 
-        // FILTER PRESENSI DI TANGGAL TERSEBUT
         const presensiHariIni = userAttendances.filter(a => {
           const tglAbsen = formatTanggalLokal(new Date(a.created_at));
           return tglAbsen === tglStr;
@@ -378,13 +380,21 @@
     }
 
     async function kirimPengajuan() {
+      const selectedDate = document.getElementById('reqDate').value;
       const desc = document.getElementById('reqDesc').value.trim();
       const status = document.getElementById('status');
 
+      if (!selectedDate) return status.innerHTML = "<span style='color:red'>Tanggal izin wajib dipilih!</span>";
       if (!desc) return status.innerHTML = "<span style='color:red'>Alasan izin wajib diisi!</span>";
 
       status.innerText = "Mengirim pengajuan izin...";
-      const { error } = await supabaseClient.from('requests').insert([{ user_id: currentUser.id, type: 'izin', description: desc }]);
+      const { error } = await supabaseClient.from('requests').insert([{ 
+        user_id: currentUser.id, 
+        type: 'izin', 
+        date: selectedDate,
+        description: desc 
+      }]);
+
       if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
       else {
         status.innerHTML = "<span style='color:green'>Pengajuan izin berhasil dikirim!</span>";
