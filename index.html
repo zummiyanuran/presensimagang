@@ -8,17 +8,18 @@
   <style>
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #eef2f5; padding: 20px 0; }
-    .card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); width: 380px; }
-    h2, h3, h4 { margin-top: 0; color: #2c3e50; text-align: center; }
+    .card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); width: 380px; text-align: center; }
+    h2, h3, h4 { margin-top: 0; color: #2c3e50; }
     input, select, textarea { width: 100%; padding: 10px; margin: 6px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
     button { background: #2563eb; color: white; border: none; padding: 10px; width: 100%; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; margin-top: 6px; }
     button:hover { background: #1d4ed8; }
+    .btn-pulang { background: #ef4444; }
+    .btn-pulang:hover { background: #dc2626; }
     .btn-secondary { background: #10b981; }
     .btn-warning { background: #f59e0b; }
-    .btn-danger { background: #ef4444; }
     .hidden { display: none; }
-    #status { margin-top: 12px; font-size: 12px; word-break: break-word; text-align: center; }
-    .profile-img { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 2px solid #2563eb; display: block; margin: 0 auto 10px; }
+    #status { margin-top: 12px; font-size: 12px; word-break: break-word; }
+    .profile-img { width: 75px; height: 75px; border-radius: 50%; object-fit: cover; border: 2px solid #2563eb; display: block; margin: 0 auto 10px; }
     .nav-tabs { display: flex; gap: 5px; margin-bottom: 15px; }
     .nav-tabs button { padding: 6px; font-size: 11px; margin: 0; background: #e2e8f0; color: #334155; }
     .nav-tabs button.active { background: #2563eb; color: white; }
@@ -30,7 +31,7 @@
   <div class="card">
     <h2>HRIS Magang</h2>
 
-    <!-- AUTENTIKASI -->
+    <!-- FORM AUTENTIKASI -->
     <div id="authSection">
       <input type="email" id="email" placeholder="Email Karyawan">
       <input type="password" id="password" placeholder="Password (Min. 6 Karakter)">
@@ -40,9 +41,8 @@
 
     <!-- DASHBOARD UTAMA -->
     <div id="mainDashboard" class="hidden">
-      <img id="userAvatar" class="profile-img" src="https://via.placeholder.com/70" alt="Profile">
-      <h4 id="userName" style="margin-bottom:2px;">User</h4>
-      <p id="userRole" style="text-align:center; font-size:11px; color:#64748b; margin-top:0;">-</p>
+      <img id="userAvatar" class="profile-img" src="https://via.placeholder.com/75?text=Foto" alt="Profile">
+      <h4 id="userName" style="margin-bottom:12px;">Pengguna</h4>
 
       <!-- TAB NAVIGASI -->
       <div class="nav-tabs">
@@ -52,47 +52,38 @@
         <button id="tabProfilBtn" onclick="switchTab('profil')">Profil</button>
       </div>
 
-      <!-- CONTENT: PRESENSI -->
+      <!-- TAB 1: PRESENSI -->
       <div id="tabAbsen">
-        <button id="btnAbsen" onclick="catatPresensi()">Absen Masuk via GPS</button>
-        <h4>Riwayat Saya</h4>
-        <div id="riwayatList" style="max-height:140px; overflow-y:auto;"></div>
+        <button id="btnMasuk" onclick="catatPresensi('Masuk')">Absen Masuk via GPS</button>
+        <button id="btnPulang" class="btn-pulang" onclick="catatPresensi('Pulang')">Absen Pulang via GPS</button>
+        
+        <h4 style="margin-top:15px; margin-bottom:6px;">Riwayat Saya</h4>
+        <div id="riwayatList" style="max-height:150px; overflow-y:auto;"></div>
       </div>
 
-      <!-- CONTENT: IZIN / TUKAR SHIFT -->
+      <!-- TAB 2: IZIN / TUKAR SHIFT -->
       <div id="tabIzin" class="hidden">
         <select id="reqType">
           <option value="izin">Pengajuan Izin</option>
           <option value="tukar_shift">Perubahan / Tukar Shift</option>
         </select>
-        <textarea id="reqDesc" placeholder="Alasan pengajuan..." rows="2"></textarea>
+        <textarea id="reqDesc" placeholder="Alasan pengajuan..." rows="3"></textarea>
         <button class="btn-warning" onclick="kirimPengajuan()">Kirim Pengajuan</button>
-
-        <!-- DASHBOARD APPROVAL SUPERVISOR -->
-        <div id="supervisorPanel" class="hidden">
-          <hr>
-          <h4>Persetujuan Supervisor</h4>
-          <div id="approvalList" style="max-height:140px; overflow-y:auto;"></div>
-        </div>
       </div>
 
-      <!-- CONTENT: DIREKTORI REKAN -->
+      <!-- TAB 3: DIREKTORI REKAN -->
       <div id="tabRekan" class="hidden">
-        <h4>Daftar Anak Magang</h4>
-        <div id="rekanList" style="max-height:200px; overflow-y:auto;"></div>
+        <h4>Daftar Rekan Magang</h4>
+        <div id="rekanList" style="max-height:220px; overflow-y:auto;"></div>
       </div>
 
-      <!-- CONTENT: PROFIL & UPLOAD FOTO -->
+      <!-- TAB 4: PROFIL & FOTO -->
       <div id="tabProfil" class="hidden">
-        <input type="text" id="editFullName" placeholder="Nama Lengkap">
-        <select id="selectRole">
-          <option value="magang">Anak Magang</option>
-          <option value="supervisor">Supervisor</option>
-        </select>
-        <label style="font-size:11px;">Upload Foto Profil:</label>
+        <input type="text" id="editFullName" placeholder="Nama Lengkap Kamu">
+        <label style="font-size:11px; display:block; text-align:left; margin-top:6px;">Pilih Foto Profil:</label>
         <input type="file" id="avatarFile" accept="image/*">
         <button onclick="simpanProfil()">Simpan Profil</button>
-        <button class="btn-danger" onclick="logout()">Keluar / Logout</button>
+        <button class="btn-pulang" onclick="logout()">Keluar / Logout</button>
       </div>
     </div>
 
@@ -155,73 +146,79 @@
       document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1) + 'Btn').classList.add('active');
 
       if (tabName === 'rekan') muatRekan();
-      if (tabName === 'izin' && userProfile?.role === 'supervisor') muatApprovalSupervisor();
     }
 
-    // --- FITUR GPS & REVERSE GEOCODING ---
-    function catatPresensi() {
+    // --- FITUR PRESENSI (MASUK & PULANG) ---
+    function catatPresensi(tipeAbsen) {
       const statusDiv = document.getElementById('status');
       if (!navigator.geolocation) return statusDiv.innerHTML = "<span style='color:red'>GPS tidak didukung.</span>";
 
-      statusDiv.innerText = "Mendeteksi posisi GPS & Alamat...";
+      statusDiv.innerText = `Mengambil lokasi untuk Absen ${tipeAbsen}...`;
       navigator.geolocation.getCurrentPosition(async (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         const jam = new Date().toTimeString().split(' ')[0];
 
-        // Mendapatkan Alamat Jalan dari Nominatim OpenStreetMap (Gratis)
-        let alamatTeks = "Lokasi tidak teridentifikasi";
+        let alamatTeks = "Lokasi GPS Terdeteksi";
         try {
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
           const geoData = await res.json();
-          alamatTeks = geoData.display_name || alamatTeks;
+          if(geoData.display_name) alamatTeks = geoData.display_name;
         } catch (e) { console.log("Geocoding Error:", e); }
 
         const { error } = await supabaseClient
           .from('attendances')
-          .insert([{ user_id: currentUser.id, jam_masuk: jam, latitude: lat, longitude: lng, alamat: alamatTeks, status: 'Hadir' }]);
+          .insert([{ 
+            user_id: currentUser.id, 
+            jam_masuk: jam, 
+            latitude: lat, 
+            longitude: lng, 
+            alamat: alamatTeks, 
+            tipe: tipeAbsen,
+            status: 'Hadir' 
+          }]);
 
         if (error) statusDiv.innerHTML = `<span style='color:red'>${error.message}</span>`;
         else {
-          statusDiv.innerHTML = `<span style='color:green'><b>Presensi Berhasil!</b><br>📍 ${alamatTeks}</span>`;
+          statusDiv.innerHTML = `<span style='color:green'><b>Absen ${tipeAbsen} Berhasil!</b><br>📍 ${alamatTeks}</span>`;
           muatRiwayat();
         }
-      }, (err) => statusDiv.innerHTML = `<span style='color:red'>Akses GPS Ditolak!</span>`, { enableHighAccuracy: true });
+      }, (err) => statusDiv.innerHTML = `<span style='color:red'>Akses GPS Ditolak! Pastikan GPS aktif.</span>`, { enableHighAccuracy: true });
     }
 
     async function muatRiwayat() {
-      const { data } = await supabaseClient.from('attendances').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
+      const { data } = await supabaseClient
+        .from('attendances')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false });
+
       const list = document.getElementById('riwayatList');
       if (data && data.length > 0) {
         list.innerHTML = data.map(item => `
           <div class="list-item">
-            <b>${item.jam_masuk}</b> - ${item.status}<br>
-            <small>📍 ${item.alamat || (item.latitude + ',' + item.longitude)}</small>
+            <b>Absen ${item.tipe || 'Masuk'}</b> (${item.jam_masuk})<br>
+            <small>📍 ${item.alamat || (item.latitude + ', ' + item.longitude)}</small>
           </div>
         `).join('');
-      } else list.innerHTML = "<small>Belum ada riwayat.</small>";
+      } else {
+        list.innerHTML = "<small style='color:#64748b;'>Belum ada riwayat presensi.</small>";
+      }
     }
 
-    // --- PROFIL & FOTO UPLOAD ---
+    // --- PROFIL & UPLOAD FOTO ---
     async function muatProfil() {
       const { data } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).single();
       if (data) {
         userProfile = data;
         document.getElementById('userName').innerText = data.full_name || currentUser.email;
-        document.getElementById('userRole').innerText = "Role: " + (data.role || 'magang').toUpperCase();
         if (data.avatar_url) document.getElementById('userAvatar').src = data.avatar_url;
         document.getElementById('editFullName').value = data.full_name || '';
-        document.getElementById('selectRole').value = data.role || 'magang';
-
-        if (data.role === 'supervisor') {
-          document.getElementById('supervisorPanel').classList.remove('hidden');
-        }
       }
     }
 
     async function simpanProfil() {
       const fullName = document.getElementById('editFullName').value;
-      const role = document.getElementById('selectRole').value;
       const avatarFile = document.getElementById('avatarFile').files[0];
       const status = document.getElementById('status');
       status.innerText = "Menyimpan profil...";
@@ -230,72 +227,60 @@
 
       if (avatarFile) {
         const fileExt = avatarFile.name.split('.').pop();
-        const filePath = `${currentUser.id}.${fileExt}`;
+        const filePath = `${currentUser.id}_${Date.now()}.${fileExt}`;
         const { error: uploadErr } = await supabaseClient.storage.from('profiles').upload(filePath, avatarFile, { upsert: true });
         if (!uploadErr) {
           const { data: urlData } = supabaseClient.storage.from('profiles').getPublicUrl(filePath);
           avatarUrl = urlData.publicUrl;
+        } else {
+          console.log("Upload error:", uploadErr);
         }
       }
 
       const { error } = await supabaseClient.from('profiles').upsert({
         id: currentUser.id,
         full_name: fullName,
-        role: role,
         avatar_url: avatarUrl
       });
 
       if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
       else {
         status.innerHTML = "<span style='color:green'>Profil berhasil diperbarui!</span>";
-        muatProfil();
+        await muatProfil();
       }
     }
 
-    // --- FITUR IZIN & APPROVAL ---
+    // --- FITUR IZIN ---
     async function kirimPengajuan() {
       const type = document.getElementById('reqType').value;
       const desc = document.getElementById('reqDesc').value;
       const status = document.getElementById('status');
 
+      if (!desc) return status.innerHTML = "<span style='color:red'>Alasan wajib diisi!</span>";
+
       const { error } = await supabaseClient.from('requests').insert([{ user_id: currentUser.id, type, description: desc }]);
       if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
-      else status.innerHTML = "<span style='color:green'>Pengajuan dikirim ke Supervisor!</span>";
-    }
-
-    async function muatApprovalSupervisor() {
-      const { data } = await supabaseClient.from('requests').select('*, profiles(full_name)').eq('status', 'pending');
-      const list = document.getElementById('approvalList');
-      if (data && data.length > 0) {
-        list.innerHTML = data.map(item => `
-          <div class="list-item">
-            <b>${item.profiles?.full_name || 'Pengguna'}</b>: ${item.type.toUpperCase()}<br>
-            <i>"${item.description}"</i><br>
-            <button onclick="prosesApproval(${item.id}, 'approved')" style="padding:2px 5px; font-size:10px;">Approve</button>
-            <button onclick="prosesApproval(${item.id}, 'rejected')" class="btn-danger" style="padding:2px 5px; font-size:10px;">Reject</button>
-          </div>
-        `).join('');
-      } else list.innerHTML = "<small>Tidak ada pengajuan pending.</small>";
-    }
-
-    async function prosesApproval(reqId, newStatus) {
-      await supabaseClient.from('requests').update({ status: newStatus }).eq('id', reqId);
-      muatApprovalSupervisor();
+      else {
+        status.innerHTML = "<span style='color:green'>Pengajuan berhasil dikirim!</span>";
+        document.getElementById('reqDesc').value = "";
+      }
     }
 
     // --- FITUR DIREKTORI REKAN ---
     async function muatRekan() {
       const { data } = await supabaseClient.from('profiles').select('*');
       const list = document.getElementById('rekanList');
-      if (data) {
+      if (data && data.length > 0) {
         list.innerHTML = data.map(r => `
-          <div class="list-item" style="display:flex; align-items:center; gap:8px;">
-            <img src="${r.avatar_url || 'https://via.placeholder.com/30'}" style="width:30px; height:30px; border-radius:50%;">
+          <div class="list-item" style="display:flex; align-items:center; gap:10px;">
+            <img src="${r.avatar_url || 'https://via.placeholder.com/35?text=Foto'}" style="width:35px; height:35px; border-radius:50%; object-fit:cover;">
             <div>
-              <b>${r.full_name || 'Tanpa Nama'}</b> (${r.role})
+              <b>${r.full_name || 'Anak Magang'}</b>
             </div>
           </div>
         `).join('');
+      } else {
+        list.innerHTML = "<small style='color:#64748b;'>Belum ada profil rekan lain yang tersimpan.</small>";
       }
     }
   </script>
