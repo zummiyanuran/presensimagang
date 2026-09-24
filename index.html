@@ -596,52 +596,74 @@
       }
     }
 
-    async function muatDaftarPersetujuan() {
-      const list = document.getElementById('approvalList');
-      list.innerHTML = "<small>Memuat data...</small>";
+async function muatDaftarPersetujuan() {
+  const list = document.getElementById('approvalList');
+  list.innerHTML = "<small>Memuat data...</small>";
 
-      let query = supabaseClient.from('requests').select('*, profiles(nama_lengkap, full_name, supervisor_id)').order('created_at', { ascending: false });
+  // 1. Ambil seluruh data pengajuan
+  const { data: reqs, error: reqErr } = await supabaseClient
+    .from('requests')
+    .select('*')
+    .order('created_at', { ascending: false });
 
-      const { data: reqs } = await query;
+  if (reqErr) {
+    list.innerHTML = `<small style='color:red;'>Gagal memuat: ${reqErr.message}</small>`;
+    return;
+  }
 
-      if (reqs && reqs.length > 0) {
-        const filteredReqs = reqs.filter(r => {
-          if (userProfile?.role === 'superadmin') return true;
-          return r.profiles?.supervisor_id === currentUser.id;
-        });
-
-        if (filteredReqs.length === 0) {
-          list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan dari anak magang bimbingan Anda.</small>";
-          return;
-        }
-
-        list.innerHTML = filteredReqs.map(item => {
-          const pemohon = item.profiles?.nama_lengkap || item.profiles?.full_name || 'Anak Magang';
-          const st = item.status || 'Pending';
-          const tipeJenis = (item.type || 'Izin').toUpperCase();
-          let badgeClass = 'badge-pending';
-          if (st === 'Disetujui') badgeClass = 'badge-approved';
-          if (st === 'Ditolak') badgeClass = 'badge-rejected';
-
-          return `
-            <div class="list-item">
-              <div><b>Pemohon:</b> ${pemohon} <small style="color:#2563eb;">(${tipeJenis})</small></div>
-              <div><b>Detail:</b> ${item.description || '-'}</div>
-              <div style="margin-top:4px;">Status: <span class="${badgeClass}">${st}</span></div>
-              
-              ${st === 'Pending' ? `
-                <div style="display:flex; gap:6px; margin-top:6px;">
-                  <button class="btn-approve" onclick="updateStatusIzin('${item.id}', 'Disetujui')">Setujui</button>
-                  <button class="btn-reject" onclick="updateStatusIzin('${item.id}', 'Ditolak')">Tolak</button>
-                </div>
-              ` : ''}
-            </div>
-          `;
-        }).join('');
-      } else {
-        list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan.</small>";
-      }
+  if (reqs && reqs.length > 0) {
+    // 2. Ambil data seluruh profil untuk pencocokan manual
+    const { data: profilesData } = await supabaseClient.from('profiles').select('*');
+    const profilesMap = {};
+    if (profilesData) {
+      profilesData.forEach(p => { profilesMap[p.id] = p; });
     }
+
+    // 3. Filter pengajuan milik anak magang bimbingan supervisor yang sedang login
+    const filteredReqs = reqs.filter(r => {
+      const pemohonProfile = profilesMap[r.user_id];
+      if (userProfile?.role === 'superadmin') return true;
+      
+      // Cocokkan apakah supervisor_id anak magang = ID Albertus
+      const isDirectBawahan = pemohonProfile?.supervisor_id === currentUser.id;
+      const isSameUnit = pemohonProfile?.unit_kerja && userProfile?.unit_kerja && (pemohonProfile.unit_kerja === userProfile.unit_kerja);
+      
+      return isDirectBawahan || isSameUnit;
+    });
+
+    if (filteredReqs.length === 0) {
+      list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan dari anak magang bimbingan Anda.</small>";
+      return;
+    }
+
+    list.innerHTML = filteredReqs.map(item => {
+      const pemohonProfile = profilesMap[item.user_id];
+      const pemohon = pemohonProfile?.nama_lengkap || pemohonProfile?.full_name || 'Anak Magang';
+      const st = item.status || 'Pending';
+      const tipeJenis = (item.type || 'Izin').toUpperCase();
+      let badgeClass = 'badge-pending';
+      if (st === 'Disetujui') badgeClass = 'badge-approved';
+      if (st === 'Ditolak') badgeClass = 'badge-rejected';
+
+      return `
+        <div class="list-item">
+          <div><b>Pemohon:</b> ${pemohon} <small style="color:#2563eb;">(${tipeJenis})</small></div>
+          <div><b>Detail:</b> ${item.description || '-'}</div>
+          <div style="margin-top:4px;">Status: <span class="${badgeClass}">${st}</span></div>
+          
+          ${st === 'Pending' ? `
+            <div style="display:flex; gap:6px; margin-top:6px;">
+              <button class="btn-approve" onclick="updateStatusIzin('${item.id}', 'Disetujui')">Setujui</button>
+              <button class="btn-reject" onclick="updateStatusIzin('${item.id}', 'Ditolak')">Tolak</button>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
+  } else {
+    list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan.</small>";
+  }
+}
 
     async function updateStatusIzin(id, statusBaru) {
       const statusDiv = document.getElementById('status');
