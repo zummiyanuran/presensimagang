@@ -440,39 +440,48 @@
       }
     }
 
-    async function simpanProfil() {
-      const fullName = document.getElementById('editFullName').value;
-      const phoneNumber = document.getElementById('editPhoneNumber').value;
-      const avatarFile = document.getElementById('avatarFile').files[0];
-      const status = document.getElementById('status');
-      status.innerText = "Menyimpan profil...";
+async function simpanProfil() {
+  const fullName = document.getElementById('editFullName').value;
+  const phoneNumber = document.getElementById('editPhoneNumber').value;
+  const avatarFile = document.getElementById('avatarFile').files[0];
+  const status = document.getElementById('status');
+  status.innerText = "Menyimpan profil...";
 
-      let avatarUrl = userProfile?.avatar_url || '';
+  let avatarUrl = userProfile?.avatar_url || '';
 
-      if (avatarFile) {
-        const fileExt = avatarFile.name.split('.').pop();
-        const filePath = `${currentUser.id}_${Date.now()}.${fileExt}`;
-        const { error: uploadErr } = await supabaseClient.storage.from('profiles').upload(filePath, avatarFile, { upsert: true });
-        if (!uploadErr) {
-          const { data: urlData } = supabaseClient.storage.from('profiles').getPublicUrl(filePath);
-          avatarUrl = urlData.publicUrl;
-        }
-      }
+  if (avatarFile) {
+    const fileExt = avatarFile.name.split('.').pop();
+    const filePath = `${currentUser.id}.${fileExt}`;
 
-      const { error } = await supabaseClient.from('profiles').upsert({
-        id: currentUser.id,
-        nama_lengkap: fullName,
-        full_name: fullName,
-        phone_number: phoneNumber,
-        avatar_url: avatarUrl
-      });
+    // Upload file dengan mematikan cache & mengizinkan overwrite
+    const { error: uploadErr } = await supabaseClient.storage
+      .from('profiles')
+      .upload(filePath, avatarFile, { upsert: true, cacheControl: '0' });
 
-      if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
-      else {
-        status.innerHTML = "<span style='color:green'>Profil berhasil diperbarui!</span>";
-        await muatProfil();
-      }
+    if (!uploadErr) {
+      const { data: urlData } = supabaseClient.storage.from('profiles').getPublicUrl(filePath);
+      // Tambahkan timestamp query parameter agar gambar langsung ter-refresh
+      avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+    } else {
+      console.log("Upload Storage Error:", uploadErr);
     }
+  }
+
+  const { error } = await supabaseClient.from('profiles').upsert({
+    id: currentUser.id,
+    nama_lengkap: fullName,
+    full_name: fullName,
+    phone_number: phoneNumber,
+    avatar_url: avatarUrl
+  });
+
+  if (error) {
+    status.innerHTML = `<span style='color:red'>${error.message}</span>`;
+  } else {
+    status.innerHTML = "<span style='color:green'>Profil & Foto berhasil diperbarui!</span>";
+    await muatProfil();
+  }
+}
 
     async function kirimPengajuan() {
       const selectedDate = document.getElementById('reqDate').value;
