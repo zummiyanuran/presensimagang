@@ -171,6 +171,8 @@
         <select id="shiftChoice">
           <option value="Shift FT (09.00 - 17.00)">Shift FT (09.00 - 17.00)</option>
           <option value="Shift EM (08.00 - 16.00)">Shift EM (08.00 - 16.00)</option>
+          <option value="WFH FT (09.00 - 17.00)">WFH FT (09.00 - 17.00)</option>
+          <option value="WFH EM (08.00 - 16.00)">WFH EM (08.00 - 16.00)</option>
         </select>
 
         <textarea id="shiftReqDesc" placeholder="Tuliskan alasan perubahan shift..." rows="3"></textarea>
@@ -601,9 +603,9 @@
 
       if (reqShiftHariIni) {
         const detailTeks = reqShiftHariIni.shift_choice || reqShiftHariIni.description || '';
-        if (detailTeks.includes('EM') || detailTeks.includes('08.00')) {
-          jamShiftText = "08:00 - 16:00 (EM)";
-        }
+        if (detailTeks.includes('WFH FT')) jamShiftText = "09:00 - 17:00 (WFH FT)";
+        else if (detailTeks.includes('WFH EM')) jamShiftText = "08:00 - 16:00 (WFH EM)";
+        else if (detailTeks.includes('EM') || detailTeks.includes('08.00')) jamShiftText = "08:00 - 16:00 (EM)";
       }
 
       display.innerHTML = `⏰ Shift Hari Ini: <b>${jamShiftText}</b>`;
@@ -690,11 +692,11 @@
           const detailTeks = reqShiftHariIni.shift_choice || reqShiftHariIni.description || '';
           
           if (stShift === 'Disetujui') {
-            if (detailTeks.includes('EM') || detailTeks.includes('08.00')) {
-              shiftWaktuText = "08:00 - 16:00 (EM)";
-            } else {
-              shiftWaktuText = "09:00 - 17:00 (FT)";
-            }
+            if (detailTeks.includes('WFH FT')) shiftWaktuText = "09:00 - 17:00 (WFH FT)";
+            else if (detailTeks.includes('WFH EM')) shiftWaktuText = "08:00 - 16:00 (WFH EM)";
+            else if (detailTeks.includes('EM') || detailTeks.includes('08.00')) shiftWaktuText = "08:00 - 16:00 (EM)";
+            else shiftWaktuText = "09:00 - 17:00 (FT)";
+            
             statusKeterangan += `<br><span class="status-badge-info badge-approved">🔄 Shift Diubah (${shiftWaktuText})</span>`;
           } else if (stShift === 'Pending') {
             statusKeterangan += `<br><span class="status-badge-info badge-pending">🔄 Pengajuan Shift (Pending)</span>`;
@@ -1138,6 +1140,15 @@
         bulan = skrg.getMonth();
       }
 
+      let liburNasional = [];
+      try {
+        const res = await fetch(`https://dayoffapi.vercel.app/api?month=${bulan + 1}&year=${tahun}`);
+        const dataLibur = await res.json();
+        if (Array.isArray(dataLibur)) {
+          liburNasional = dataLibur.filter(l => l.is_holiday).map(l => l.holiday_date);
+        }
+      } catch (e) { console.log("Gagal memuat libur", e); }
+
       const { data: allUsers } = await supabaseClient.from('profiles').select('*');
       const usersMap = {};
       if (allUsers) allUsers.forEach(u => usersMap[u.id] = u);
@@ -1167,8 +1178,12 @@
 
         for (let day = 1; day <= jumlahHari; day++) {
           const d = new Date(tahun, bulan, day);
+          const dayOfWeek = d.getDay();
           const tglStr = formatTanggalLokal(d);
           const opsiTgl = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+
+          const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+          const isHariLibur = liburNasional.includes(tglStr);
 
           const attHariIni = (attendances || []).filter(a => a.user_id === uId && bersihkanTanggal(a.created_at) === tglStr);
           const absenMasuk = attHariIni.find(a => a.tipe === 'Masuk');
@@ -1180,11 +1195,15 @@
           const shiftApproved = reqHariIni.find(r => r.type === 'shift' && r.status === 'Disetujui');
 
           let shiftKerjaText = "FT (09.00 - 17.00)";
-          if (shiftApproved) {
+
+          if (isWeekend || isHariLibur) {
+            shiftKerjaText = "Day Off (00.00 - 00.00)";
+          } else if (shiftApproved) {
             const detailText = shiftApproved.shift_choice || shiftApproved.description || '';
-            if (detailText.includes('EM') || detailText.includes('08.00')) {
-              shiftKerjaText = "EM (08.00 - 16.00)";
-            }
+            if (detailText.includes('WFH FT')) shiftKerjaText = "WFH FT (09.00 - 17.00)";
+            else if (detailText.includes('WFH EM')) shiftKerjaText = "WFH EM (08.00 - 16.00)";
+            else if (detailText.includes('EM') || detailText.includes('08.00')) shiftKerjaText = "EM (08.00 - 16.00)";
+            else shiftKerjaText = "FT (09.00 - 17.00)";
           }
 
           let claimMasukInfo = claimApproved.find(c => c.shift_choice && c.shift_choice.includes('Masuk'));
@@ -1192,7 +1211,7 @@
 
           let jamMasuk = '-';
           let jamPulang = '-';
-          let statusAbsen = 'Tidak Hadir';
+          let statusAbsen = isWeekend || isHariLibur ? 'Libur' : 'Tidak Hadir';
 
           if (absenMasuk) jamMasuk = absenMasuk.jam_masuk;
           else if (claimMasukInfo) {
@@ -1209,7 +1228,7 @@
           if (jamMasuk !== '-' || jamPulang !== '-') statusAbsen = 'Hadir';
           if (izinApproved) statusAbsen = 'Izin (Disetujui)';
 
-          if (statusAbsen !== 'Tidak Hadir' || (d.getDay() !== 0 && d.getDay() !== 6)) {
+          if (statusAbsen !== 'Libur' || jamMasuk !== '-' || jamPulang !== '-') {
             dataExportSuperAdmin.push({
               tanggal: opsiTgl,
               nama: nama,
