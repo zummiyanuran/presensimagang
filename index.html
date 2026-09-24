@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HRIS Presensi Lokasi</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Menggunakan Supabase JS v2 versi bundle resmi yang kompatibel -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <style>
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #eef2f5; }
@@ -33,9 +34,9 @@
         <small>Silakan masuk atau daftarkan akun baru Anda.</small>
       </div>
       <input type="email" id="email" placeholder="Email Karyawan">
-      <input type="password" id="password" placeholder="Password">
-      <button onclick="login()">Masuk</button>
-      <button class="btn-secondary" onclick="register()">Daftar Akun Baru</button>
+      <input type="password" id="password" placeholder="Password (Min. 6 Karakter)">
+      <button type="button" onclick="login()">Masuk</button>
+      <button type="button" class="btn-secondary" onclick="register()">Daftar Akun Baru</button>
     </div>
 
     <!-- DASHBOARD PRESENSI LOKASI -->
@@ -44,34 +45,47 @@
         <span>Pengguna:</span><br>
         <b id="userEmail"></b>
       </div>
-      <button id="btnAbsen" onclick="catatPresensi()">Absen Masuk via GPS</button>
-      <button class="btn-danger" onclick="logout()">Keluar / Logout</button>
+      <button id="btnAbsen" type="button" onclick="catatPresensi()">Absen Masuk via GPS</button>
+      <button type="button" class="btn-danger" onclick="logout()">Keluar / Logout</button>
     </div>
 
     <div id="status"></div>
   </div>
 
   <script>
- // Konfigurasi Supabase
-const SUPABASE_URL = "https://dreztgddckcxpjsrjdpg.supabase.co";
-const SUPABASE_KEY = "sb_publishable_bACaxTomi0g2l6vElrZREA_bUG4pqm0";
+    // Konfigurasi Supabase
+    const SUPABASE_URL = "https://dreztgddckcxpjsrjdpg.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_bACaxTomi0g2l6vElrZREA_bUG4pqm0";
 
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let supabaseClient;
+    
+    // Inisialisasi Klien Supabase dengan Error Catching
+    try {
+      supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    } catch (e) {
+      console.error("Gagal inisialisasi Supabase:", e);
+      document.getElementById('status').innerHTML = `<span style="color:red">Error Konfigurasi Supabase: ${e.message}</span>`;
+    }
 
     // 1. Cek Sesi Login Karyawan
     async function checkAuth() {
-      const { data: { user } } = await supabaseClient.auth.getUser();
-      if (user) {
-        document.getElementById('authSection').classList.add('hidden');
-        document.getElementById('presensiSection').classList.remove('hidden');
-        document.getElementById('userEmail').innerText = user.email;
+      if (!supabaseClient) return;
+      try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (user) {
+          document.getElementById('authSection').classList.add('hidden');
+          document.getElementById('presensiSection').classList.remove('hidden');
+          document.getElementById('userEmail').innerText = user.email;
+        }
+      } catch (err) {
+        console.log("Belum login:", err);
       }
     }
     checkAuth();
 
     // 2. Fungsi Registrasi Akun Baru
     async function register() {
-      const email = document.getElementById('email').value;
+      const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
       const status = document.getElementById('status');
 
@@ -80,19 +94,28 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         return;
       }
 
-      status.innerText = "Mendaftarkan akun...";
-      const { data, error } = await supabaseClient.auth.signUp({ email, password });
+      if (password.length < 6) {
+        status.innerHTML = `<span style="color:red">Password minimal 6 karakter!</span>`;
+        return;
+      }
 
-      if (error) {
-        status.innerHTML = `<span style="color:red">Gagal Daftar: ${error.message}</span>`;
-      } else {
-        status.innerHTML = `<span style="color:green">Akun berhasil dibuat! Silakan klik tombol **Masuk**.</span>`;
+      status.innerText = "Mendaftarkan akun...";
+      try {
+        const { data, error } = await supabaseClient.auth.signUp({ email, password });
+
+        if (error) {
+          status.innerHTML = `<span style="color:red">Gagal Daftar: ${error.message}</span>`;
+        } else {
+          status.innerHTML = `<span style="color:green">Akun berhasil dibuat! Silakan klik tombol <b>Masuk</b>.</span>`;
+        }
+      } catch (err) {
+        status.innerHTML = `<span style="color:red">Error: ${err.message}</span>`;
       }
     }
 
     // 3. Fungsi Login
     async function login() {
-      const email = document.getElementById('email').value;
+      const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
       const status = document.getElementById('status');
 
@@ -102,18 +125,24 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
       }
 
       status.innerText = "Memverifikasi akun...";
-      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      try {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
-      if (error) {
-        status.innerHTML = `<span style="color:red">Login Gagal: ${error.message}</span>`;
-      } else {
-        location.reload();
+        if (error) {
+          status.innerHTML = `<span style="color:red">Login Gagal: ${error.message}</span>`;
+        } else {
+          location.reload();
+        }
+      } catch (err) {
+        status.innerHTML = `<span style="color:red">Error: ${err.message}</span>`;
       }
     }
 
     // 4. Fungsi Logout
     async function logout() {
-      await supabaseClient.auth.signOut();
+      if (supabaseClient) {
+        await supabaseClient.auth.signOut();
+      }
       location.reload();
     }
 
@@ -135,23 +164,28 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
           const jam = new Date().toTimeString().split(' ')[0];
-          const { data: { user } } = await supabaseClient.auth.getUser();
+          
+          try {
+            const { data: { user } } = await supabaseClient.auth.getUser();
 
-          statusDiv.innerText = "Menyimpan data presensi...";
+            statusDiv.innerText = "Menyimpan data presensi...";
 
-          const { error } = await supabaseClient
-            .from('attendances')
-            .insert([{ user_id: user.id, jam_masuk: jam, latitude: lat, longitude: lng, status: 'Hadir' }]);
+            const { error } = await supabaseClient
+              .from('attendances')
+              .insert([{ user_id: user.id, jam_masuk: jam, latitude: lat, longitude: lng, status: 'Hadir' }]);
 
-          if (error) {
-            statusDiv.innerHTML = `<span style='color:red;'>Gagal menyimpan: ${error.message}</span>`;
-          } else {
-            statusDiv.innerHTML = `<span style='color:green;'><b>Presensi Berhasil!</b><br>Jam: ${jam}<br>Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}</span>`;
+            if (error) {
+              statusDiv.innerHTML = `<span style='color:red;'>Gagal menyimpan: ${error.message}</span>`;
+            } else {
+              statusDiv.innerHTML = `<span style='color:green;'><b>Presensi Berhasil!</b><br>Jam: ${jam}<br>Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}</span>`;
+            }
+          } catch (err) {
+            statusDiv.innerHTML = `<span style='color:red;'>Error Presensi: ${err.message}</span>`;
           }
           btn.disabled = false;
         },
         (err) => {
-          statusDiv.innerHTML = `<span style='color:red;'>Izin Lokasi Ditolak/Gagal: ${err.message}. Pastikan GPS aktif dan izinkan lokasi pada browser.</span>`;
+          statusDiv.innerHTML = `<span style='color:red;'>Akses Lokasi Ditolak/Gagal: ${err.message}. Pastikan GPS aktif.</span>`;
           btn.disabled = false;
         },
         { enableHighAccuracy: true }
