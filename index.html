@@ -61,7 +61,7 @@
         <div id="riwayatList" style="max-height:150px; overflow-y:auto;"></div>
       </div>
 
-      <!-- TAB 2: FORM IZIN (KHUSUS IZIN SAJA) -->
+      <!-- TAB 2: FORM IZIN (TIDAK ADA OPSI SHIFT) -->
       <div id="tabIzin" class="hidden">
         <h4 style="margin-bottom:8px;">Form Pengajuan Izin</h4>
         <textarea id="reqDesc" placeholder="Tuliskan alasan izin (Sakit, Acara Kampus, dll)..." rows="4"></textarea>
@@ -89,6 +89,7 @@
 
   <script>
     const SUPABASE_URL = "https://dreztgddckcxpjsrjdpg.supabase.co";
+    // Menggunakan Service Role Key terbaru
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZXp0Z2RkY2tjeHBqc3JqZHBnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MDIxMzI5OCwiZXhwIjoyMTA1Nzg5Mjk4fQ.roOROpGyQQ8v18XUl7oXxz2CII86oe_oyc-wD6f-Cto";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -206,9 +207,10 @@
       const { data } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).single();
       if (data) {
         userProfile = data;
-        document.getElementById('userName').innerText = data.full_name || currentUser.email;
+        const nama = data.nama_lengkap || data.full_name || currentUser.email;
+        document.getElementById('userName').innerText = nama;
         if (data.avatar_url) document.getElementById('userAvatar').src = data.avatar_url;
-        document.getElementById('editFullName').value = data.full_name || '';
+        document.getElementById('editFullName').value = nama;
       }
     }
 
@@ -234,6 +236,7 @@
 
       const { error } = await supabaseClient.from('profiles').upsert({
         id: currentUser.id,
+        nama_lengkap: fullName,
         full_name: fullName,
         avatar_url: avatarUrl
       });
@@ -268,7 +271,7 @@
           <div class="list-item" style="display:flex; align-items:center; gap:10px;">
             <img src="${r.avatar_url || 'https://via.placeholder.com/35?text=Foto'}" style="width:35px; height:35px; border-radius:50%; object-fit:cover;">
             <div>
-              <b>${r.full_name || 'Anak Magang'}</b>
+              <b>${r.nama_lengkap || r.full_name || 'Anak Magang'}</b>
             </div>
           </div>
         `).join('');
