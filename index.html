@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HRIS Presensi Online</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f4f6f9; }
+    .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; width: 320px; }
+    h2 { color: #333; margin-bottom: 20px; }
+    button { background-color: #007bff; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; }
+    button:hover { background-color: #0056b3; }
+    #status { margin-top: 20px; font-size: 14px; color: #555; word-break: break-word; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2>HRIS Presensi</h2>
+    <p>Klik tombol di bawah untuk mencatat kehadiran berdasarkan koordinat GPS Anda.</p>
+    <button id="btnAbsen" onclick="catatPresensi()">Absen Masuk</button>
+    <div id="status"></div>
+  </div>
+
+  <script>
+    // GANTI DENGAN DATA SUPABASE MILIKMU
+    const SUPABASE_URL = https://dreztgddckcxpjsrjdpg.supabase.co;
+    const SUPABASE_KEY = sb_publishable_bAcaxTomi0g2l6vElrZREA_bUG4pqm0;
+
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    function catatPresensi() {
+      const statusDiv = document.getElementById('status');
+      const btn = document.getElementById('btnAbsen');
+
+      if (!navigator.geolocation) {
+        statusDiv.innerHTML = "<span style='color:red;'>Geolocation tidak didukung browser ini.</span>";
+        return;
+      }
+
+      btn.disabled = true;
+      statusDiv.innerText = "Mendapatkan lokasi GPS...";
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          const jam = new Date().toTimeString().split(' ')[0];
+
+          statusDiv.innerText = "Menyimpan ke database...";
+
+          const { data, error } = await supabaseClient
+            .from('attendances')
+            .insert([{ jam_masuk: jam, latitude: lat, longitude: lng, status: 'Hadir' }]);
+
+          if (error) {
+            statusDiv.innerHTML = `<span style='color:red;'>Gagal: ${error.message}</span>`;
+          } else {
+            statusDiv.innerHTML = `<span style='color:green;'><b>Presensi Berhasil!</b><br>Jam: ${jam}<br>Lat: ${lat.toFixed(5)}, Long: ${lng.toFixed(5)}</span>`;
+          }
+          btn.disabled = false;
+        },
+        (err) => {
+          statusDiv.innerHTML = `<span style='color:red;'>Gagal mengambil lokasi: ${err.message}</span>`;
+          btn.disabled = false;
+        }
+      );
+    }
+  </script>
+</body>
+</html>
