@@ -42,6 +42,8 @@
     .filter-month-box { background: #f8fafc; padding: 8px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .filter-month-box label { font-size: 11px; font-weight: bold; color: #334155; }
     .filter-month-box input { width: auto; margin: 0; padding: 4px 8px; font-size: 12px; }
+    .time-container { display: flex; gap: 8px; text-align: left; }
+    .time-container div { flex: 1; }
   </style>
 </head>
 <body>
@@ -106,17 +108,31 @@
         <div id="shiftList" style="max-height:220px; overflow-y:auto;"></div>
       </div>
 
-      <!-- TAB 3: FORM PENGAJUAN PRESENSI (KLAIM ABSEN / LUPA ABSEN) -->
+      <!-- TAB 3: FORM PENGAJUAN PRESENSI (KLAIM ABSEN) -->
       <div id="tabAjukanAbsen" class="hidden">
         <h4 style="margin-bottom:8px;">Form Pengajuan Presensi Susulan</h4>
+        
         <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Pilih Tanggal Presensi:</label>
         <input type="date" id="claimReqDate">
 
         <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Tipe Absen:</label>
-        <select id="claimType">
+        <select id="claimType" onchange="toggleTimeInputs()">
           <option value="Masuk">Absen Masuk</option>
           <option value="Pulang">Absen Pulang</option>
+          <option value="MasukDanPulang">Masuk & Pulang Sekaligus</option>
         </select>
+
+        <!-- INPUT DYNAMIC JAM PRESENSI -->
+        <div class="time-container">
+          <div id="boxJamMasuk">
+            <label style="font-size:11px; display:block; margin-top:4px;">Jam Masuk:</label>
+            <input type="time" id="claimTimeMasuk" value="09:00">
+          </div>
+          <div id="boxJamPulang" class="hidden">
+            <label style="font-size:11px; display:block; margin-top:4px;">Jam Pulang:</label>
+            <input type="time" id="claimTimePulang" value="17:00">
+          </div>
+        </div>
 
         <textarea id="claimReqDesc" placeholder="Tuliskan alasan pengajuan presensi (Misal: Kendala GPS / Lupa Absen)..." rows="3"></textarea>
         <button class="btn-secondary" onclick="kirimPengajuan('claim_absen')">Kirim Pengajuan Presensi</button>
@@ -246,6 +262,23 @@
       const yyyy = skrg.getFullYear();
       const mm = String(skrg.getMonth() + 1).padStart(2, '0');
       document.getElementById('monthPicker').value = `${yyyy}-${mm}`;
+    }
+
+    function toggleTimeInputs() {
+      const val = document.getElementById('claimType').value;
+      const boxMasuk = document.getElementById('boxJamMasuk');
+      const boxPulang = document.getElementById('boxJamPulang');
+
+      if (val === 'Masuk') {
+        boxMasuk.classList.remove('hidden');
+        boxPulang.classList.add('hidden');
+      } else if (val === 'Pulang') {
+        boxMasuk.classList.add('hidden');
+        boxPulang.classList.remove('hidden');
+      } else { // MasukDanPulang
+        boxMasuk.classList.remove('hidden');
+        boxPulang.classList.remove('hidden');
+      }
     }
 
     function tampilkanTanggalHariIni() {
@@ -514,9 +547,10 @@
 
         let detailAbsenHtml = '<div class="absen-info">📌 Presensi: -</div>';
         if (absenMasuk || absenPulang || claimMasukInfo || claimPulangInfo) {
-          const masukStr = absenMasuk ? `Masuk: ${absenMasuk.jam_masuk}` : (claimMasukInfo ? `Masuk: (Klaim Diacc)` : 'Masuk: -');
-          const pulangStr = absenPulang ? `Pulang: ${absenPulang.jam_masuk}` : (claimPulangInfo ? `Pulang: (Klaim Diacc)` : 'Pulang: -');
-          detailAbsenHtml = `<div class="absen-info">📌 ${masukStr} | ${pulangStr}</div>`;
+          const jamMasukVal = absenMasuk ? absenMasuk.jam_masuk : (claimMasukInfo ? claimMasukInfo.shift_choice || 'Diacc' : '-');
+          const jamPulangVal = absenPulang ? absenPulang.jam_masuk : (claimPulangInfo ? claimPulangInfo.shift_choice || 'Diacc' : '-');
+          
+          detailAbsenHtml = `<div class="absen-info">📌 Masuk: ${jamMasukVal} | Pulang: ${jamPulangVal}</div>`;
         }
 
         const reqIzinHariIni = userRequests.find(r => r.type === 'izin' && (bersihkanTanggal(r.date) === tglStr || (r.description && r.description.includes(tglStr))));
@@ -669,7 +703,48 @@
       } else if (jenisType === 'claim_absen') {
         selectedDate = document.getElementById('claimReqDate').value;
         desc = document.getElementById('claimReqDesc').value.trim();
-        shiftChoice = document.getElementById('claimType').value;
+        const cType = document.getElementById('claimType').value;
+
+        if (cType === 'MasukDanPulang') {
+          const timeMasuk = document.getElementById('claimTimeMasuk').value || '09:00';
+          const timePulang = document.getElementById('claimTimePulang').value || '17:00';
+          if (!selectedDate || !desc) return status.innerHTML = "<span style='color:red'>Tanggal & alasan wajib diisi!</span>";
+
+          status.innerText = "Mengirim pengajuan Masuk & Pulang...";
+          const payloadArray = [
+            {
+              user_id: currentUser.id,
+              type: 'claim_absen',
+              shift_choice: `Masuk (${timeMasuk})`,
+              description: `[Tanggal: ${selectedDate}] Klaim Absen Masuk (${timeMasuk}) - ${desc}`,
+              date: selectedDate,
+              status: 'Pending'
+            },
+            {
+              user_id: currentUser.id,
+              type: 'claim_absen',
+              shift_choice: `Pulang (${timePulang})`,
+              description: `[Tanggal: ${selectedDate}] Klaim Absen Pulang (${timePulang}) - ${desc}`,
+              date: selectedDate,
+              status: 'Pending'
+            }
+          ];
+
+          const { error } = await supabaseClient.from('requests').insert(payloadArray);
+          if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
+          else {
+            status.innerHTML = "<span style='color:green'>Pengajuan Masuk & Pulang sekaligus berhasil dikirim!</span>";
+            document.getElementById('claimReqDesc').value = "";
+            await muatRiwayatClaim();
+            await muatUserRequests();
+            await muatShiftHariIni();
+            await muatJadwalShift();
+          }
+          return;
+        } else {
+          const targetTime = cType === 'Masuk' ? document.getElementById('claimTimeMasuk').value : document.getElementById('claimTimePulang').value;
+          shiftChoice = `${cType} (${targetTime || '09:00'})`;
+        }
       }
 
       if (!selectedDate) return status.innerHTML = "<span style='color:red'>Tanggal wajib dipilih!</span>";
