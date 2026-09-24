@@ -588,7 +588,7 @@
       const isHariLibur = liburNasional.includes(tglHariIni);
 
       if (isWeekend || isHariLibur) {
-        display.innerHTML = "⏰ Shift Hari Ini: <span style='color:#dc2626;'>LIBUR</span>";
+        display.innerHTML = "⏰ Shift Hari Ini: <span style='color:#dc2626;'>Day Off (00.00 - 00.00)</span>";
         return;
       }
 
@@ -715,7 +715,7 @@
         if (isWeekend || isHariLibur) {
           html += `
             <div class="shift-card shift-off">
-              <b>${opsiTgl}</b>: <span style="color:#dc2626; font-weight:bold;">LIBUR</span>
+              <b>${opsiTgl}</b>: <span style="color:#dc2626; font-weight:bold;">Day Off (00.00 - 00.00)</span>
               <small style="display:block; color:#991b1b;">${isHariLibur ? 'Hari Libur Nasional' : 'Akhir Pekan'}</small>
               ${statusKeterangan}
               ${detailAbsenHtml}
@@ -1228,17 +1228,15 @@
           if (jamMasuk !== '-' || jamPulang !== '-') statusAbsen = 'Hadir';
           if (izinApproved) statusAbsen = 'Izin (Disetujui)';
 
-          if (statusAbsen !== 'Libur' || jamMasuk !== '-' || jamPulang !== '-') {
-            dataExportSuperAdmin.push({
-              tanggal: opsiTgl,
-              nama: nama,
-              unit: unit,
-              shift: shiftKerjaText,
-              jamMasuk: jamMasuk,
-              jamPulang: jamPulang,
-              status: statusAbsen
-            });
-          }
+          dataExportSuperAdmin.push({
+            tanggal: opsiTgl,
+            nama: nama,
+            unit: unit,
+            shift: shiftKerjaText,
+            jamMasuk: jamMasuk,
+            jamPulang: jamPulang,
+            status: statusAbsen
+          });
         }
       });
 
@@ -1248,7 +1246,7 @@
             <b>${row.nama}</b> (${row.unit}) - <small>${row.tanggal}</small><br>
             ⏰ Shift: <b>${row.shift}</b><br>
             📌 Masuk: ${row.jamMasuk} | Pulang: ${row.jamPulang}<br>
-            Status: <span class="status-badge-info ${row.status.includes('Hadir')?'badge-approved':'badge-pending'}">${row.status}</span>
+            Status: <span class="status-badge-info ${row.status.includes('Hadir')?'badge-approved':(row.status==='Libur'?'badge-rejected':'badge-pending')}">${row.status}</span>
           </div>
         `).join('');
       } else {
