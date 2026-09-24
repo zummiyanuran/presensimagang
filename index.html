@@ -366,96 +366,105 @@
       userRequests = data || [];
     }
 
-    async function muatJadwalShift() {
-      const container = document.getElementById('shiftList');
-      const skrg = new Date();
-      const tahun = skrg.getFullYear();
-      const bulan = skrg.getMonth();
-      const jumlahHari = new Date(tahun, bulan + 1, 0).getDate();
+async function muatJadwalShift() {
+  const container = document.getElementById('shiftList');
+  const skrg = new Date();
+  const tahun = skrg.getFullYear();
+  const bulan = skrg.getMonth();
+  const jumlahHari = new Date(tahun, bulan + 1, 0).getDate();
 
-      let liburNasional = [];
-      try {
-        const res = await fetch(`https://dayoffapi.vercel.app/api?month=${bulan + 1}&year=${tahun}`);
-        const dataLibur = await res.json();
-        if(Array.isArray(dataLibur)) {
-          liburNasional = dataLibur.filter(l => l.is_holiday).map(l => l.holiday_date);
-        }
-      } catch (e) { console.log("Gagal memuat libur nasional", e); }
-
-      let html = '';
-      for (let day = 1; day <= jumlahHari; day++) {
-        const d = new Date(tahun, bulan, day);
-        const dayOfWeek = d.getDay(); 
-        const tglStr = formatTanggalLokal(d);
-        const opsiTgl = d.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' });
-
-        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
-        const isHariLibur = liburNasional.includes(tglStr);
-
-        // Filter Presensi Tanggal Terkait
-        const presensiHariIni = userAttendances.filter(a => {
-          const tglAbsen = formatTanggalLokal(new Date(a.created_at));
-          return tglAbsen === tglStr;
-        });
-
-        const absenMasuk = presensiHariIni.find(a => a.tipe === 'Masuk');
-        const absenPulang = presensiHariIni.find(a => a.tipe === 'Pulang');
-
-        let detailAbsenHtml = '<div class="absen-info">📌 Presensi: -</div>';
-        if (absenMasuk || absenPulang) {
-          const masukStr = absenMasuk ? `Masuk: ${absenMasuk.jam_masuk}` : 'Masuk: -';
-          const pulangStr = absenPulang ? `Pulang: ${absenPulang.jam_masuk}` : 'Pulang: -';
-          detailAbsenHtml = `<div class="absen-info">📌 ${masukStr} | ${pulangStr}</div>`;
-        }
-
-        // Filter Pengajuan Izin & Perubahan Shift Tanggal Terkait
-        const reqIzinHariIni = userRequests.find(r => r.type === 'izin' && r.date === tglStr);
-        const reqShiftHariIni = userRequests.find(r => r.type === 'shift' && r.date === tglStr);
-
-        let statusKeterangan = '';
-        let shiftWaktuText = "09:00 - 17:00 (FT)";
-
-        if (reqShiftHariIni) {
-          const stShift = reqShiftHariIni.status || 'Pending';
-          if (stShift === 'Disetujui' && reqShiftHariIni.shift_choice) {
-            shiftWaktuText = reqShiftHariIni.shift_choice.includes('EM') ? "08:00 - 16:00 (EM)" : "09:00 - 17:00 (FT)";
-            statusKeterangan += `<br><span class="status-badge-info badge-approved">🔄 Shift Diubah ke ${shiftWaktuText}</span>`;
-          } else if (stShift === 'Pending') {
-            statusKeterangan += `<br><span class="status-badge-info badge-pending">🔄 Pengajuan Shift (Pending)</span>`;
-          }
-        }
-
-        if (reqIzinHariIni) {
-          const stIzin = reqIzinHariIni.status || 'Pending';
-          if (stIzin === 'Disetujui') {
-            statusKeterangan += `<br><span class="status-badge-info badge-approved">✉️ IZIN DISETUJUI</span>`;
-          } else if (stIzin === 'Pending') {
-            statusKeterangan += `<br><span class="status-badge-info badge-pending">✉️ Pengajuan Izin (Pending)</span>`;
-          }
-        }
-
-        if (isWeekend || isHariLibur) {
-          html += `
-            <div class="shift-card shift-off">
-              <b>${opsiTgl}</b>: <span style="color:#dc2626; font-weight:bold;">LIBUR</span>
-              <small style="display:block; color:#991b1b;">${isHariLibur ? 'Hari Libur Nasional' : 'Akhir Pekan'}</small>
-              ${statusKeterangan}
-              ${detailAbsenHtml}
-            </div>
-          `;
-        } else {
-          html += `
-            <div class="shift-card">
-              <b>${opsiTgl}</b>: <span style="color:#16a34a; font-weight:bold;">${shiftWaktuText}</span>
-              <small style="display:block; color:#15803d;">Shift Reguler Magang</small>
-              ${statusKeterangan}
-              ${detailAbsenHtml}
-            </div>
-          `;
-        }
-      }
-      container.innerHTML = html;
+  let liburNasional = [];
+  try {
+    const res = await fetch(`https://dayoffapi.vercel.app/api?month=${bulan + 1}&year=${tahun}`);
+    const dataLibur = await res.json();
+    if (Array.isArray(dataLibur)) {
+      liburNasional = dataLibur.filter(l => l.is_holiday).map(l => l.holiday_date);
     }
+  } catch (e) { console.log("Gagal memuat libur nasional", e); }
+
+  // Fungsi pembantu mengekstrak YYYY-MM-DD dari berbagai format string tanggal
+  const bersihkanTanggal = (str) => {
+    if (!str) return '';
+    if (str.includes('T')) return str.split('T')[0];
+    return str.trim();
+  };
+
+  let html = '';
+  for (let day = 1; day <= jumlahHari; day++) {
+    const d = new Date(tahun, bulan, day);
+    const dayOfWeek = d.getDay(); 
+    const tglStr = formatTanggalLokal(d);
+    const opsiTgl = d.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' });
+
+    const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+    const isHariLibur = liburNasional.includes(tglStr);
+
+    // 1. Presensi Harian
+    const presensiHariIni = userAttendances.filter(a => bersihkanTanggal(a.created_at) === tglStr);
+    const absenMasuk = presensiHariIni.find(a => a.tipe === 'Masuk');
+    const absenPulang = presensiHariIni.find(a => a.tipe === 'Pulang');
+
+    let detailAbsenHtml = '<div class="absen-info">📌 Presensi: -</div>';
+    if (absenMasuk || absenPulang) {
+      const masukStr = absenMasuk ? `Masuk: ${absenMasuk.jam_masuk}` : 'Masuk: -';
+      const pulangStr = absenPulang ? `Pulang: ${absenPulang.jam_masuk}` : 'Pulang: -';
+      detailAbsenHtml = `<div class="absen-info">📌 ${masukStr} | ${pulangStr}</div>`;
+    }
+
+    // 2. Filter Pengajuan Izin & Shift (Dengan Penanganan Format Tanggal Fleksibel)
+    const reqIzinHariIni = userRequests.find(r => r.type === 'izin' && (bersihkanTanggal(r.date) === tglStr || (r.description && r.description.includes(tglStr))));
+    const reqShiftHariIni = userRequests.find(r => r.type === 'shift' && (bersihkanTanggal(r.date) === tglStr || (r.description && r.description.includes(tglStr))));
+
+    let statusKeterangan = '';
+    let shiftWaktuText = "09:00 - 17:00 (FT)";
+
+    if (reqShiftHariIni) {
+      const stShift = reqShiftHariIni.status || 'Pending';
+      const detailTeks = reqShiftHariIni.shift_choice || reqShiftHariIni.description || '';
+      
+      if (stShift === 'Disetujui') {
+        if (detailTeks.includes('EM') || detailTeks.includes('08.00')) {
+          shiftWaktuText = "08:00 - 16:00 (EM)";
+        } else {
+          shiftWaktuText = "09:00 - 17:00 (FT)";
+        }
+        statusKeterangan += `<br><span class="status-badge-info badge-approved">🔄 Shift Diubah (${shiftWaktuText})</span>`;
+      } else if (stShift === 'Pending') {
+        statusKeterangan += `<br><span class="status-badge-info badge-pending">🔄 Pengajuan Shift (Pending)</span>`;
+      }
+    }
+
+    if (reqIzinHariIni) {
+      const stIzin = reqIzinHariIni.status || 'Pending';
+      if (stIzin === 'Disetujui') {
+        statusKeterangan += `<br><span class="status-badge-info badge-approved">✉️ IZIN DISETUJUI</span>`;
+      } else if (stIzin === 'Pending') {
+        statusKeterangan += `<br><span class="status-badge-info badge-pending">✉️ Pengajuan Izin (Pending)</span>`;
+      }
+    }
+
+    if (isWeekend || isHariLibur) {
+      html += `
+        <div class="shift-card shift-off">
+          <b>${opsiTgl}</b>: <span style="color:#dc2626; font-weight:bold;">LIBUR</span>
+          <small style="display:block; color:#991b1b;">${isHariLibur ? 'Hari Libur Nasional' : 'Akhir Pekan'}</small>
+          ${statusKeterangan}
+          ${detailAbsenHtml}
+        </div>
+      `;
+    } else {
+      html += `
+        <div class="shift-card">
+          <b>${opsiTgl}</b>: <span style="color:#16a34a; font-weight:bold;">${shiftWaktuText}</span>
+          <small style="display:block; color:#15803d;">Shift Reguler Magang</small>
+          ${statusKeterangan}
+          ${detailAbsenHtml}
+        </div>
+      `;
+    }
+  }
+  container.innerHTML = html;
+}
 
     async function muatProfil() {
       const { data } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).single();
