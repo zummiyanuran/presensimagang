@@ -13,17 +13,19 @@
     input, select, textarea { width: 100%; padding: 10px; margin: 6px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
     button { background: #2563eb; color: white; border: none; padding: 10px; width: 100%; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; margin-top: 6px; }
     button:hover { background: #1d4ed8; }
+    button:disabled { background: #cbd5e1 !important; color: #64748b; cursor: not-allowed; }
     .btn-pulang { background: #ef4444; }
     .btn-pulang:hover { background: #dc2626; }
     .btn-secondary { background: #10b981; }
     .btn-warning { background: #f59e0b; }
     .hidden { display: none; }
     #status { margin-top: 12px; font-size: 12px; word-break: break-word; }
-    .profile-img { width: 75px; height: 75px; border-radius: 50%; object-fit: cover; border: 2px solid #2563eb; display: block; margin: 0 auto 10px; }
+    .profile-img { width: 75px; height: 75px; border-radius: 50%; object-fit: cover; border: 2px solid #2563eb; display: block; margin: 0 auto 10px; background-color: #e2e8f0; }
     .nav-tabs { display: flex; gap: 5px; margin-bottom: 15px; }
     .nav-tabs button { padding: 6px; font-size: 11px; margin: 0; background: #e2e8f0; color: #334155; }
     .nav-tabs button.active { background: #2563eb; color: white; }
     .list-item { background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 6px; margin-bottom: 6px; font-size: 11px; text-align: left; }
+    .date-badge { background: #f1f5f9; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 12px; display: inline-block; }
   </style>
 </head>
 <body>
@@ -41,7 +43,7 @@
 
     <!-- DASHBOARD UTAMA -->
     <div id="mainDashboard" class="hidden">
-      <img id="userAvatar" class="profile-img" src="https://via.placeholder.com/75?text=Foto" alt="Profile">
+      <img id="userAvatar" class="profile-img" src="https://ui-avatars.com/api/?name=User&background=2563eb&color=fff" alt="Profile">
       <h4 id="userName" style="margin-bottom:12px;">Pengguna</h4>
 
       <!-- TAB NAVIGASI -->
@@ -54,6 +56,9 @@
 
       <!-- TAB 1: PRESENSI -->
       <div id="tabAbsen">
+        <!-- HARI DAN TANGGAL -->
+        <div class="date-badge" id="currentDateDisplay">Memuat Tanggal...</div>
+
         <button id="btnMasuk" onclick="catatPresensi('Masuk')">Absen Masuk via GPS</button>
         <button id="btnPulang" class="btn-pulang" onclick="catatPresensi('Pulang')">Absen Pulang via GPS</button>
         
@@ -61,7 +66,7 @@
         <div id="riwayatList" style="max-height:150px; overflow-y:auto;"></div>
       </div>
 
-      <!-- TAB 2: FORM IZIN (TIDAK ADA OPSI SHIFT) -->
+      <!-- TAB 2: FORM IZIN -->
       <div id="tabIzin" class="hidden">
         <h4 style="margin-bottom:8px;">Form Pengajuan Izin</h4>
         <textarea id="reqDesc" placeholder="Tuliskan alasan izin (Sakit, Acara Kampus, dll)..." rows="4"></textarea>
@@ -89,12 +94,18 @@
 
   <script>
     const SUPABASE_URL = "https://dreztgddckcxpjsrjdpg.supabase.co";
-    // Menggunakan Service Role Key terbaru
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZXp0Z2RkY2tjeHBqc3JqZHBnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MDIxMzI5OCwiZXhwIjoyMTA1Nzg5Mjk4fQ.roOROpGyQQ8v18XUl7oXxz2CII86oe_oyc-wD6f-Cto";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let currentUser = null;
     let userProfile = null;
+
+    // TAMPILKAN HARI DAN TANGGAL
+    function tampilkanTanggalHariIni() {
+      const opsi = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      const hariIni = new Date().toLocaleDateString('id-ID', opsi);
+      document.getElementById('currentDateDisplay').innerText = hariIni;
+    }
 
     async function checkAuth() {
       const { data: { user } } = await supabaseClient.auth.getUser();
@@ -102,8 +113,9 @@
         currentUser = user;
         document.getElementById('authSection').classList.add('hidden');
         document.getElementById('mainDashboard').classList.remove('hidden');
+        tampilkanTanggalHariIni();
         await muatProfil();
-        muatRiwayat();
+        await muatRiwayat();
       }
     }
     checkAuth();
@@ -178,7 +190,7 @@
         if (error) statusDiv.innerHTML = `<span style='color:red'>${error.message}</span>`;
         else {
           statusDiv.innerHTML = `<span style='color:green'><b>Absen ${tipeAbsen} Berhasil!</b><br>📍 ${alamatTeks}</span>`;
-          muatRiwayat();
+          await muatRiwayat();
         }
       }, (err) => statusDiv.innerHTML = `<span style='color:red'>Akses GPS Ditolak! Pastikan GPS aktif.</span>`, { enableHighAccuracy: true });
     }
@@ -191,6 +203,17 @@
         .order('created_at', { ascending: false });
 
       const list = document.getElementById('riwayatList');
+      const btnMasuk = document.getElementById('btnMasuk');
+      const btnPulang = document.getElementById('btnPulang');
+
+      // Reset tombol
+      btnMasuk.disabled = false;
+      btnMasuk.innerText = "Absen Masuk via GPS";
+      btnPulang.disabled = false;
+      btnPulang.innerText = "Absen Pulang via GPS";
+
+      const hariIniStr = new Date().toISOString().split('T')[0];
+
       if (data && data.length > 0) {
         list.innerHTML = data.map(item => `
           <div class="list-item">
@@ -198,6 +221,22 @@
             <small>📍 ${item.alamat || (item.latitude + ', ' + item.longitude)}</small>
           </div>
         `).join('');
+
+        // CEK APAKAH SUDAH ABSEN HARI INI
+        data.forEach(item => {
+          const tglItem = new Date(item.created_at).toISOString().split('T')[0];
+          if (tglItem === hariIniStr) {
+            if (item.tipe === 'Masuk') {
+              btnMasuk.disabled = true;
+              btnMasuk.innerText = "Sudah Absen Masuk Hari Ini";
+            }
+            if (item.tipe === 'Pulang') {
+              btnPulang.disabled = true;
+              btnPulang.innerText = "Sudah Absen Pulang Hari Ini";
+            }
+          }
+        });
+
       } else {
         list.innerHTML = "<small style='color:#64748b;'>Belum ada riwayat presensi.</small>";
       }
@@ -209,7 +248,12 @@
         userProfile = data;
         const nama = data.nama_lengkap || data.full_name || currentUser.email;
         document.getElementById('userName').innerText = nama;
-        if (data.avatar_url) document.getElementById('userAvatar').src = data.avatar_url;
+        
+        if (data.avatar_url && data.avatar_url.trim() !== "") {
+          document.getElementById('userAvatar').src = data.avatar_url;
+        } else {
+          document.getElementById('userAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(nama)}&background=2563eb&color=fff`;
+        }
         document.getElementById('editFullName').value = nama;
       }
     }
@@ -267,14 +311,21 @@
       const { data } = await supabaseClient.from('profiles').select('*');
       const list = document.getElementById('rekanList');
       if (data && data.length > 0) {
-        list.innerHTML = data.map(r => `
-          <div class="list-item" style="display:flex; align-items:center; gap:10px;">
-            <img src="${r.avatar_url || 'https://via.placeholder.com/35?text=Foto'}" style="width:35px; height:35px; border-radius:50%; object-fit:cover;">
-            <div>
-              <b>${r.nama_lengkap || r.full_name || 'Anak Magang'}</b>
+        list.innerHTML = data.map(r => {
+          const namaRekan = r.nama_lengkap || r.full_name || 'Anak Magang';
+          const avatarRekan = (r.avatar_url && r.avatar_url.trim() !== "") 
+            ? r.avatar_url 
+            : `https://ui-avatars.com/api/?name=${encodeURIComponent(namaRekan)}&background=2563eb&color=fff`;
+
+          return `
+            <div class="list-item" style="display:flex; align-items:center; gap:10px;">
+              <img src="${avatarRekan}" style="width:35px; height:35px; border-radius:50%; object-fit:cover;">
+              <div>
+                <b>${namaRekan}</b>
+              </div>
             </div>
-          </div>
-        `).join('');
+          `;
+        }).join('');
       } else {
         list.innerHTML = "<small style='color:#64748b;'>Belum ada profil rekan lain yang tersimpan.</small>";
       }
