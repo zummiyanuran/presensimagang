@@ -3,193 +3,300 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HRIS Presensi Lokasi</title>
-  <!-- Menggunakan Supabase JS v2 versi bundle resmi yang kompatibel -->
+  <title>HRIS Magang Komnas Perempuan</title>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <style>
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    body { display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #eef2f5; }
-    .card { background: white; padding: 28px; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); width: 350px; text-align: center; }
-    h2 { margin-top: 0; color: #2c3e50; }
-    input { width: 100%; padding: 10px 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
-    button { background: #2563eb; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; margin-top: 8px; transition: 0.2s; }
+    body { display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #eef2f5; padding: 20px 0; }
+    .card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); width: 380px; }
+    h2, h3, h4 { margin-top: 0; color: #2c3e50; text-align: center; }
+    input, select, textarea { width: 100%; padding: 10px; margin: 6px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
+    button { background: #2563eb; color: white; border: none; padding: 10px; width: 100%; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; margin-top: 6px; }
     button:hover { background: #1d4ed8; }
     .btn-secondary { background: #10b981; }
-    .btn-secondary:hover { background: #059669; }
+    .btn-warning { background: #f59e0b; }
     .btn-danger { background: #ef4444; }
-    .btn-danger:hover { background: #dc2626; }
     .hidden { display: none; }
-    #status { margin-top: 15px; font-size: 13px; word-break: break-word; }
-    .info-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px; border-radius: 6px; margin-bottom: 15px; }
+    #status { margin-top: 12px; font-size: 12px; word-break: break-word; text-align: center; }
+    .profile-img { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 2px solid #2563eb; display: block; margin: 0 auto 10px; }
+    .nav-tabs { display: flex; gap: 5px; margin-bottom: 15px; }
+    .nav-tabs button { padding: 6px; font-size: 11px; margin: 0; background: #e2e8f0; color: #334155; }
+    .nav-tabs button.active { background: #2563eb; color: white; }
+    .list-item { background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 6px; margin-bottom: 6px; font-size: 11px; text-align: left; }
   </style>
 </head>
 <body>
 
   <div class="card">
-    <h2>HRIS Presensi</h2>
+    <h2>HRIS Magang</h2>
 
-    <!-- FORM AUTENTIKASI (LOGIN / REGISTRASI) -->
+    <!-- AUTENTIKASI -->
     <div id="authSection">
-      <div class="info-box">
-        <small>Silakan masuk atau daftarkan akun baru Anda.</small>
-      </div>
       <input type="email" id="email" placeholder="Email Karyawan">
       <input type="password" id="password" placeholder="Password (Min. 6 Karakter)">
       <button type="button" onclick="login()">Masuk</button>
       <button type="button" class="btn-secondary" onclick="register()">Daftar Akun Baru</button>
     </div>
 
-    <!-- DASHBOARD PRESENSI LOKASI -->
-    <div id="presensiSection" class="hidden">
-      <div class="info-box">
-        <span>Pengguna:</span><br>
-        <b id="userEmail"></b>
+    <!-- DASHBOARD UTAMA -->
+    <div id="mainDashboard" class="hidden">
+      <img id="userAvatar" class="profile-img" src="https://via.placeholder.com/70" alt="Profile">
+      <h4 id="userName" style="margin-bottom:2px;">User</h4>
+      <p id="userRole" style="text-align:center; font-size:11px; color:#64748b; margin-top:0;">-</p>
+
+      <!-- TAB NAVIGASI -->
+      <div class="nav-tabs">
+        <button id="tabAbsenBtn" class="active" onclick="switchTab('absen')">Presensi</button>
+        <button id="tabIzinBtn" onclick="switchTab('izin')">Izin/Shift</button>
+        <button id="tabRekanBtn" onclick="switchTab('rekan')">Rekan</button>
+        <button id="tabProfilBtn" onclick="switchTab('profil')">Profil</button>
       </div>
-      <button id="btnAbsen" type="button" onclick="catatPresensi()">Absen Masuk via GPS</button>
-      <button type="button" class="btn-danger" onclick="logout()">Keluar / Logout</button>
+
+      <!-- CONTENT: PRESENSI -->
+      <div id="tabAbsen">
+        <button id="btnAbsen" onclick="catatPresensi()">Absen Masuk via GPS</button>
+        <h4>Riwayat Saya</h4>
+        <div id="riwayatList" style="max-height:140px; overflow-y:auto;"></div>
+      </div>
+
+      <!-- CONTENT: IZIN / TUKAR SHIFT -->
+      <div id="tabIzin" class="hidden">
+        <select id="reqType">
+          <option value="izin">Pengajuan Izin</option>
+          <option value="tukar_shift">Perubahan / Tukar Shift</option>
+        </select>
+        <textarea id="reqDesc" placeholder="Alasan pengajuan..." rows="2"></textarea>
+        <button class="btn-warning" onclick="kirimPengajuan()">Kirim Pengajuan</button>
+
+        <!-- DASHBOARD APPROVAL SUPERVISOR -->
+        <div id="supervisorPanel" class="hidden">
+          <hr>
+          <h4>Persetujuan Supervisor</h4>
+          <div id="approvalList" style="max-height:140px; overflow-y:auto;"></div>
+        </div>
+      </div>
+
+      <!-- CONTENT: DIREKTORI REKAN -->
+      <div id="tabRekan" class="hidden">
+        <h4>Daftar Anak Magang</h4>
+        <div id="rekanList" style="max-height:200px; overflow-y:auto;"></div>
+      </div>
+
+      <!-- CONTENT: PROFIL & UPLOAD FOTO -->
+      <div id="tabProfil" class="hidden">
+        <input type="text" id="editFullName" placeholder="Nama Lengkap">
+        <select id="selectRole">
+          <option value="magang">Anak Magang</option>
+          <option value="supervisor">Supervisor</option>
+        </select>
+        <label style="font-size:11px;">Upload Foto Profil:</label>
+        <input type="file" id="avatarFile" accept="image/*">
+        <button onclick="simpanProfil()">Simpan Profil</button>
+        <button class="btn-danger" onclick="logout()">Keluar / Logout</button>
+      </div>
     </div>
 
     <div id="status"></div>
   </div>
 
   <script>
-    // Konfigurasi Supabase
     const SUPABASE_URL = "https://dreztgddckcxpjsrjdpg.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZXp0Z2RkY2tjeHBqc3JqZHBnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MDIxMzI5OCwiZXhwIjoyMTA1Nzg5Mjk4fQ.roOROpGyQQ8v18XUl7oXxz2CII86oe_oyc-wD6f-Cto";
+    const SUPABASE_KEY = "sb_publishable_bACaxTomi0g2l6vElrZREA_bUG4pqm0";
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    let supabaseClient;
-    
-    // Inisialisasi Klien Supabase dengan Error Catching
-    try {
-      supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    } catch (e) {
-      console.error("Gagal inisialisasi Supabase:", e);
-      document.getElementById('status').innerHTML = `<span style="color:red">Error Konfigurasi Supabase: ${e.message}</span>`;
-    }
+    let currentUser = null;
+    let userProfile = null;
 
-    // 1. Cek Sesi Login Karyawan
     async function checkAuth() {
-      if (!supabaseClient) return;
-      try {
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        if (user) {
-          document.getElementById('authSection').classList.add('hidden');
-          document.getElementById('presensiSection').classList.remove('hidden');
-          document.getElementById('userEmail').innerText = user.email;
-        }
-      } catch (err) {
-        console.log("Belum login:", err);
+      const { data: { user } } = await supabaseClient.auth.getUser();
+      if (user) {
+        currentUser = user;
+        document.getElementById('authSection').classList.add('hidden');
+        document.getElementById('mainDashboard').classList.remove('hidden');
+        await muatProfil();
+        muatRiwayat();
       }
     }
     checkAuth();
 
-    // 2. Fungsi Registrasi Akun Baru
     async function register() {
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
       const status = document.getElementById('status');
-
-      if (!email || !password) {
-        status.innerHTML = `<span style="color:red">Email dan Password wajib diisi!</span>`;
-        return;
-      }
-
-      if (password.length < 6) {
-        status.innerHTML = `<span style="color:red">Password minimal 6 karakter!</span>`;
-        return;
-      }
-
-      status.innerText = "Mendaftarkan akun...";
-      try {
-        const { data, error } = await supabaseClient.auth.signUp({ email, password });
-
-        if (error) {
-          status.innerHTML = `<span style="color:red">Gagal Daftar: ${error.message}</span>`;
-        } else {
-          status.innerHTML = `<span style="color:green">Akun berhasil dibuat! Silakan klik tombol <b>Masuk</b>.</span>`;
-        }
-      } catch (err) {
-        status.innerHTML = `<span style="color:red">Error: ${err.message}</span>`;
-      }
+      if (!email || !password) return status.innerHTML = "<span style='color:red'>Lengkapi data!</span>";
+      
+      status.innerText = "Mendaftarkan...";
+      const { data, error } = await supabaseClient.auth.signUp({ email, password });
+      if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
+      else status.innerHTML = "<span style='color:green'>Akun dibuat! Silakan klik Masuk.</span>";
     }
 
-    // 3. Fungsi Login
     async function login() {
       const email = document.getElementById('email').value.trim();
       const password = document.getElementById('password').value;
       const status = document.getElementById('status');
-
-      if (!email || !password) {
-        status.innerHTML = `<span style="color:red">Email dan Password wajib diisi!</span>`;
-        return;
-      }
-
-      status.innerText = "Memverifikasi akun...";
-      try {
-        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-
-        if (error) {
-          status.innerHTML = `<span style="color:red">Login Gagal: ${error.message}</span>`;
-        } else {
-          location.reload();
-        }
-      } catch (err) {
-        status.innerHTML = `<span style="color:red">Error: ${err.message}</span>`;
-      }
+      status.innerText = "Memverifikasi...";
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
+      else location.reload();
     }
 
-    // 4. Fungsi Logout
     async function logout() {
-      if (supabaseClient) {
-        await supabaseClient.auth.signOut();
-      }
+      await supabaseClient.auth.signOut();
       location.reload();
     }
 
-    // 5. Presensi Berbasis Lokasi (GPS)
+    function switchTab(tabName) {
+      ['absen', 'izin', 'rekan', 'profil'].forEach(t => {
+        document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1)).classList.add('hidden');
+        document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1) + 'Btn').classList.remove('active');
+      });
+      document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1)).classList.remove('hidden');
+      document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1) + 'Btn').classList.add('active');
+
+      if (tabName === 'rekan') muatRekan();
+      if (tabName === 'izin' && userProfile?.role === 'supervisor') muatApprovalSupervisor();
+    }
+
+    // --- FITUR GPS & REVERSE GEOCODING ---
     function catatPresensi() {
       const statusDiv = document.getElementById('status');
-      const btn = document.getElementById('btnAbsen');
+      if (!navigator.geolocation) return statusDiv.innerHTML = "<span style='color:red'>GPS tidak didukung.</span>";
 
-      if (!navigator.geolocation) {
-        statusDiv.innerHTML = "<span style='color:red;'>Browser Anda tidak mendukung Geolocation GPS.</span>";
-        return;
+      statusDiv.innerText = "Mendeteksi posisi GPS & Alamat...";
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const jam = new Date().toTimeString().split(' ')[0];
+
+        // Mendapatkan Alamat Jalan dari Nominatim OpenStreetMap (Gratis)
+        let alamatTeks = "Lokasi tidak teridentifikasi";
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+          const geoData = await res.json();
+          alamatTeks = geoData.display_name || alamatTeks;
+        } catch (e) { console.log("Geocoding Error:", e); }
+
+        const { error } = await supabaseClient
+          .from('attendances')
+          .insert([{ user_id: currentUser.id, jam_masuk: jam, latitude: lat, longitude: lng, alamat: alamatTeks, status: 'Hadir' }]);
+
+        if (error) statusDiv.innerHTML = `<span style='color:red'>${error.message}</span>`;
+        else {
+          statusDiv.innerHTML = `<span style='color:green'><b>Presensi Berhasil!</b><br>📍 ${alamatTeks}</span>`;
+          muatRiwayat();
+        }
+      }, (err) => statusDiv.innerHTML = `<span style='color:red'>Akses GPS Ditolak!</span>`, { enableHighAccuracy: true });
+    }
+
+    async function muatRiwayat() {
+      const { data } = await supabaseClient.from('attendances').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
+      const list = document.getElementById('riwayatList');
+      if (data && data.length > 0) {
+        list.innerHTML = data.map(item => `
+          <div class="list-item">
+            <b>${item.jam_masuk}</b> - ${item.status}<br>
+            <small>📍 ${item.alamat || (item.latitude + ',' + item.longitude)}</small>
+          </div>
+        `).join('');
+      } else list.innerHTML = "<small>Belum ada riwayat.</small>";
+    }
+
+    // --- PROFIL & FOTO UPLOAD ---
+    async function muatProfil() {
+      const { data } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).single();
+      if (data) {
+        userProfile = data;
+        document.getElementById('userName').innerText = data.full_name || currentUser.email;
+        document.getElementById('userRole').innerText = "Role: " + (data.role || 'magang').toUpperCase();
+        if (data.avatar_url) document.getElementById('userAvatar').src = data.avatar_url;
+        document.getElementById('editFullName').value = data.full_name || '';
+        document.getElementById('selectRole').value = data.role || 'magang';
+
+        if (data.role === 'supervisor') {
+          document.getElementById('supervisorPanel').classList.remove('hidden');
+        }
+      }
+    }
+
+    async function simpanProfil() {
+      const fullName = document.getElementById('editFullName').value;
+      const role = document.getElementById('selectRole').value;
+      const avatarFile = document.getElementById('avatarFile').files[0];
+      const status = document.getElementById('status');
+      status.innerText = "Menyimpan profil...";
+
+      let avatarUrl = userProfile?.avatar_url || '';
+
+      if (avatarFile) {
+        const fileExt = avatarFile.name.split('.').pop();
+        const filePath = `${currentUser.id}.${fileExt}`;
+        const { error: uploadErr } = await supabaseClient.storage.from('profiles').upload(filePath, avatarFile, { upsert: true });
+        if (!uploadErr) {
+          const { data: urlData } = supabaseClient.storage.from('profiles').getPublicUrl(filePath);
+          avatarUrl = urlData.publicUrl;
+        }
       }
 
-      btn.disabled = true;
-      statusDiv.innerText = "Mengambil koordinat lokasi GPS Anda...";
+      const { error } = await supabaseClient.from('profiles').upsert({
+        id: currentUser.id,
+        full_name: fullName,
+        role: role,
+        avatar_url: avatarUrl
+      });
 
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-          const jam = new Date().toTimeString().split(' ')[0];
-          
-          try {
-            const { data: { user } } = await supabaseClient.auth.getUser();
+      if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
+      else {
+        status.innerHTML = "<span style='color:green'>Profil berhasil diperbarui!</span>";
+        muatProfil();
+      }
+    }
 
-            statusDiv.innerText = "Menyimpan data presensi...";
+    // --- FITUR IZIN & APPROVAL ---
+    async function kirimPengajuan() {
+      const type = document.getElementById('reqType').value;
+      const desc = document.getElementById('reqDesc').value;
+      const status = document.getElementById('status');
 
-            const { error } = await supabaseClient
-              .from('attendances')
-              .insert([{ user_id: user.id, jam_masuk: jam, latitude: lat, longitude: lng, status: 'Hadir' }]);
+      const { error } = await supabaseClient.from('requests').insert([{ user_id: currentUser.id, type, description: desc }]);
+      if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
+      else status.innerHTML = "<span style='color:green'>Pengajuan dikirim ke Supervisor!</span>";
+    }
 
-            if (error) {
-              statusDiv.innerHTML = `<span style='color:red;'>Gagal menyimpan: ${error.message}</span>`;
-            } else {
-              statusDiv.innerHTML = `<span style='color:green;'><b>Presensi Berhasil!</b><br>Jam: ${jam}<br>Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}</span>`;
-            }
-          } catch (err) {
-            statusDiv.innerHTML = `<span style='color:red;'>Error Presensi: ${err.message}</span>`;
-          }
-          btn.disabled = false;
-        },
-        (err) => {
-          statusDiv.innerHTML = `<span style='color:red;'>Akses Lokasi Ditolak/Gagal: ${err.message}. Pastikan GPS aktif.</span>`;
-          btn.disabled = false;
-        },
-        { enableHighAccuracy: true }
-      );
+    async function muatApprovalSupervisor() {
+      const { data } = await supabaseClient.from('requests').select('*, profiles(full_name)').eq('status', 'pending');
+      const list = document.getElementById('approvalList');
+      if (data && data.length > 0) {
+        list.innerHTML = data.map(item => `
+          <div class="list-item">
+            <b>${item.profiles?.full_name || 'Pengguna'}</b>: ${item.type.toUpperCase()}<br>
+            <i>"${item.description}"</i><br>
+            <button onclick="prosesApproval(${item.id}, 'approved')" style="padding:2px 5px; font-size:10px;">Approve</button>
+            <button onclick="prosesApproval(${item.id}, 'rejected')" class="btn-danger" style="padding:2px 5px; font-size:10px;">Reject</button>
+          </div>
+        `).join('');
+      } else list.innerHTML = "<small>Tidak ada pengajuan pending.</small>";
+    }
+
+    async function prosesApproval(reqId, newStatus) {
+      await supabaseClient.from('requests').update({ status: newStatus }).eq('id', reqId);
+      muatApprovalSupervisor();
+    }
+
+    // --- FITUR DIREKTORI REKAN ---
+    async function muatRekan() {
+      const { data } = await supabaseClient.from('profiles').select('*');
+      const list = document.getElementById('rekanList');
+      if (data) {
+        list.innerHTML = data.map(r => `
+          <div class="list-item" style="display:flex; align-items:center; gap:8px;">
+            <img src="${r.avatar_url || 'https://via.placeholder.com/30'}" style="width:30px; height:30px; border-radius:50%;">
+            <div>
+              <b>${r.full_name || 'Tanpa Nama'}</b> (${r.role})
+            </div>
+          </div>
+        `).join('');
+      }
     }
   </script>
 </body>
