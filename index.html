@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistem Presensi Terpadu Pemagang Komnas Perempuan</title>
+  <title>HRIS Magang Komnas Perempuan</title>
   <!-- Supabase JS -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <!-- SheetJS untuk Export Excel -->
@@ -15,7 +15,7 @@
   <style>
     * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #eef2f5; padding: 20px 0; }
-    .card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); width: 480px; text-align: center; }
+    .card { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); width: 500px; text-align: center; }
     h2, h3, h4 { margin-top: 0; color: #2c3e50; }
     input, select, textarea { width: 100%; padding: 9px; margin: 5px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
     button { background: #2563eb; color: white; border: none; padding: 10px; width: 100%; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; margin-top: 6px; }
@@ -30,6 +30,7 @@
     .btn-pdf { background: #dc2626; font-size: 11px; padding: 6px 10px; width: auto; }
     .btn-approve { background: #16a34a; padding: 4px 8px; font-size: 11px; margin-top: 4px; width: auto; }
     .btn-reject { background: #dc2626; padding: 4px 8px; font-size: 11px; margin-top: 4px; width: auto; }
+    .btn-delete { background: #991b1b; padding: 4px 8px; font-size: 10px; margin-top: 4px; width: auto; }
     .hidden { display: none; }
     #status { margin-top: 12px; font-size: 12px; word-break: break-word; }
     .profile-img { width: 75px; height: 75px; border-radius: 50%; object-fit: cover; border: 2px solid #2563eb; display: block; margin: 0 auto 10px; background-color: #e2e8f0; }
@@ -58,7 +59,7 @@
 <body>
 
   <div class="card">
-    <h2>TALENTO</h2>
+    <h2>HRIS Magang</h2>
 
     <!-- FORM AUTENTIKASI -->
     <div id="authSection">
@@ -78,7 +79,7 @@
       <div class="nav-tabs">
         <button id="tabAbsenBtn" class="active" onclick="switchTab('absen')">Presensi</button>
         <button id="tabShiftBtn" onclick="switchTab('shift')">Jadwal Shift</button>
-        <button id="tabAjukanAbsenBtn" onclick="switchTab('ajukanAbsen')">Klaim Presensi</button>
+        <button id="tabAjukanAbsenBtn" onclick="switchTab('ajukanAbsen')">Klaim Absen</button>
         <button id="tabIzinBtn" onclick="switchTab('izin')">Izin</button>
         <button id="tabTukarShiftBtn" onclick="switchTab('tukarShift')">Tukar Shift</button>
 
@@ -98,8 +99,8 @@
         
         <div class="today-shift-badge" id="todayShiftDisplay">⏰ Shift Hari Ini: Memuat...</div>
 
-        <button id="btnMasuk" onclick="catatPresensi('Masuk')">Clockin</button>
-        <button id="btnPulang" class="btn-pulang" onclick="catatPresensi('Pulang')">Clockout</button>
+        <button id="btnMasuk" onclick="catatPresensi('Masuk')">Absen Masuk via GPS</button>
+        <button id="btnPulang" class="btn-pulang" onclick="catatPresensi('Pulang')">Absen Pulang via GPS</button>
         
         <h4 style="margin-top:15px; margin-bottom:6px;">Riwayat Harian Saya</h4>
         <div id="riwayatList" style="max-height:160px; overflow-y:auto;"></div>
@@ -126,9 +127,9 @@
 
         <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Tipe Absen:</label>
         <select id="claimType" onchange="toggleTimeInputs()">
-          <option value="Masuk">Clockin</option>
-          <option value="Pulang">Clockout</option>
-          <option value="MasukDanPulang">Clockin dan Clockout</option>
+          <option value="Masuk">Absen Masuk</option>
+          <option value="Pulang">Absen Pulang</option>
+          <option value="MasukDanPulang">Masuk & Pulang Sekaligus</option>
         </select>
 
         <div class="time-container">
@@ -192,7 +193,6 @@
       <div id="tabAdmin" class="hidden">
         <h4 style="margin-bottom:8px;">Rekap Presensi Keseluruhan (Super Admin)</h4>
         
-        <!-- FILTER REKAP PRESENSI ALL MAGANG -->
         <div style="background:#f1f5f9; padding:10px; border-radius:8px; text-align:left; margin-bottom:12px;">
           <label style="font-size:11px; font-weight:bold;">Filter Anak Magang:</label>
           <select id="adminFilterMagang" onchange="muatRekapPresensiSuperAdmin()">
@@ -238,8 +238,8 @@
           <button class="btn-purple" onclick="superAdminRegisterUser()">Buat Akun Baru</button>
         </div>
 
-        <h4 style="margin-bottom:6px;">Kelola Akun & Penugasan</h4>
-        <div id="adminUserList" style="max-height:160px; overflow-y:auto;"></div>
+        <h4 style="margin-bottom:6px;">Kelola Akun, Atasan, Offboard & Password</h4>
+        <div id="adminUserList" style="max-height:220px; overflow-y:auto;"></div>
       </div>
 
       <!-- TAB 6: DIREKTORI REKAN -->
@@ -263,7 +263,15 @@
         <label style="font-size:11px; display:block; text-align:left; margin-top:6px;">Pilih Foto Profil:</label>
         <input type="file" id="avatarFile" accept="image/*">
         <button onclick="simpanProfil()">Simpan Profil</button>
-        <button class="btn-pulang" onclick="logout()">Keluar / Logout</button>
+
+        <hr style="margin: 12px 0; border:0; border-top:1px solid #e2e8f0;">
+
+        <!-- FORM UBAH PASSWORD MANDIRI -->
+        <h4 style="margin-bottom:6px;">Ubah Password Saya</h4>
+        <input type="password" id="myNewPassword" placeholder="Password Baru (Min 6 Karakter)">
+        <button class="btn-warning" onclick="ubahPasswordMandiri()">Perbarui Password</button>
+
+        <button class="btn-pulang" style="margin-top:15px;" onclick="logout()">Keluar / Logout</button>
       </div>
     </div>
 
@@ -275,9 +283,10 @@
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRyZXp0Z2RkY2tjeHBqc3JqZHBnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MDIxMzI5OCwiZXhwIjoyMTA1Nzg5Mjk4fQ.roOROpGyQQ8v18XUl7oXxz2CII86oe_oyc-wD6f-Cto";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    // KOORDINAT KANTOR MENTENG JAKARTA PUSAT (QRWP+C6 Menteng)
     const OFFICE_LAT = -6.1964;
     const OFFICE_LNG = 106.8355;
-    const MAX_RADIUS_KM = 2.0;
+    const MAX_RADIUS_KM = 0.1; // RADIUS 100 METER
 
     let currentUser = null;
     let userProfile = null;
@@ -405,40 +414,50 @@
       const statusDiv = document.getElementById('status');
       if (!navigator.geolocation) return statusDiv.innerHTML = "<span style='color:red'>GPS tidak didukung.</span>";
 
-      statusDiv.innerText = `Mengambil lokasi presensi ${tipeAbsen}...`;
+      statusDiv.innerText = `Mengambil lokasi Absen ${tipeAbsen}...`;
       navigator.geolocation.getCurrentPosition(async (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         const jamSekarang = new Date().toTimeString().split(' ')[0].substring(0, 5); 
+        const tglHariIni = formatTanggalLokal(new Date());
 
         const jarakKm = hitungJarak(lat, lng, OFFICE_LAT, OFFICE_LNG);
+        const jarakMeter = Math.round(jarakKm * 1000);
 
-        if (jarakKm > MAX_RADIUS_KM) {
-          statusDiv.innerHTML = `<span style='color:orange'><b>Posisi Anda (${jarakKm.toFixed(2)} km) di luar radius kantor (2 km).</b><br>Mengarahkan ke Form Klaim Absen...</span>`;
-          
-          setTimeout(() => {
-            switchTab('ajukanAbsen');
-            document.getElementById('claimReqDate').value = formatTanggalLokal(new Date());
-            document.getElementById('claimType').value = tipeAbsen;
-            toggleTimeInputs();
-            
-            if (tipeAbsen === 'Masuk') document.getElementById('claimTimeMasuk').value = jamSekarang;
-            if (tipeAbsen === 'Pulang') document.getElementById('claimTimePulang').value = jamSekarang;
-            
-            document.getElementById('claimReqDesc').value = `Absen di luar radius kantor (${jarakKm.toFixed(2)} km). Alasan: `;
-            document.getElementById('claimReqDesc').focus();
-            statusDiv.innerHTML = `<span style='color:red'>Silakan isi alasan di bawah ini untuk dikirimkan ke Supervisor.</span>`;
-          }, 1500);
-          return;
-        }
-
-        let alamatTeks = "Lokasi GPS Terdeteksi";
+        let alamatTeks = `Lokasi GPS (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
         try {
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
           const geoData = await res.json();
           if(geoData.display_name) alamatTeks = geoData.display_name;
         } catch (e) { console.log("Geocoding Error:", e); }
 
+        // JIKA DI LUAR RADIUS 100 METER -> CATAT LOKASI & OTOMATIS BUAT KLAIM
+        if (jarakKm > MAX_RADIUS_KM) {
+          statusDiv.innerHTML = `<span style='color:orange'><b>Posisi Anda (${jarakMeter}m) di luar radius kantor (100m).</b><br>Mencatat lokasi & mengajukan klaim presensi...</span>`;
+          
+          const shiftChoiceText = `${tipeAbsen} (${jamSekarang})`;
+          const descClaim = `[Luar Radius ${jarakMeter}m] Absen ${tipeAbsen} pada ${jamSekarang} WIB. Lokasi: ${alamatTeks}`;
+
+          const { error: claimErr } = await supabaseClient.from('requests').insert([{
+            user_id: currentUser.id,
+            type: 'claim_absen',
+            shift_choice: shiftChoiceText,
+            description: descClaim,
+            date: tglHariIni,
+            status: 'Pending'
+          }]);
+
+          if (claimErr) statusDiv.innerHTML = `<span style='color:red'>Gagal Klaim: ${claimErr.message}</span>`;
+          else {
+            statusDiv.innerHTML = `<span style='color:green'><b>Lokasi Dicatat! Pengajuan Klaim Presensi telah dikirim ke Atasan.</b><br>📍 ${alamatTeks}</span>`;
+            await muatUserRequests();
+            await muatRiwayatClaim();
+            await muatRiwayat();
+          }
+          return;
+        }
+
+        // JIKA DALAM RADIUS <= 100 METER -> LANGSUNG SIMPAN MASUK/PULANG
         const { error } = await supabaseClient
           .from('attendances')
           .insert([{ 
@@ -454,7 +473,7 @@
 
         if (error) statusDiv.innerHTML = `<span style='color:red'>${error.message}</span>`;
         else {
-          statusDiv.innerHTML = `<span style='color:green'><b>Absen ${tipeAbsen} Berhasil! (${jarakKm.toFixed(2)} km dari kantor)</b><br>📍 ${alamatTeks}</span>`;
+          statusDiv.innerHTML = `<span style='color:green'><b>Absen ${tipeAbsen} Berhasil! (${jarakMeter}m dari kantor)</b><br>📍 ${alamatTeks}</span>`;
           await muatUserRequests();
           await muatRiwayat();
           await muatJadwalShift();
@@ -476,9 +495,9 @@
       const btnPulang = document.getElementById('btnPulang');
 
       btnMasuk.disabled = false;
-      btnMasuk.innerText = "Clockin";
+      btnMasuk.innerText = "Absen Masuk via GPS";
       btnPulang.disabled = false;
-      btnPulang.innerText = "Clockout";
+      btnPulang.innerText = "Absen Pulang via GPS";
 
       const tglHariIni = formatTanggalLokal(new Date());
 
@@ -524,7 +543,7 @@
           tglDisplay: tglDisplay,
           tipe: tipeClaim,
           jam: jamClaim,
-          lokasi: 'Klaim Presensi Disetujui',
+          lokasi: c.description || 'Klaim Presensi Disetujui',
           sumber: 'Klaim'
         });
       });
@@ -534,11 +553,11 @@
       presensiHariIni.forEach(p => {
         if (p.tipe === 'Masuk') {
           btnMasuk.disabled = true;
-          btnMasuk.innerText = p.sumber === 'Klaim' ? "Sudah Clockin (Disetujui)" : "Sudah Clockin Hari Ini";
+          btnMasuk.innerText = p.sumber === 'Klaim' ? "Sudah Absen Masuk (Disetujui)" : "Sudah Absen Masuk Hari Ini";
         }
         if (p.tipe === 'Pulang') {
           btnPulang.disabled = true;
-          btnPulang.innerText = p.sumber === 'Klaim' ? "Sudah Clockout (Disetujui)" : "Sudah Clockout Hari Ini";
+          btnPulang.innerText = p.sumber === 'Klaim' ? "Sudah Absen Pulang (Disetujui)" : "Sudah Absen Pulang Hari Ini";
         }
       });
 
@@ -815,6 +834,21 @@
       }
     }
 
+    async function ubahPasswordMandiri() {
+      const pwdBaru = document.getElementById('myNewPassword').value;
+      const status = document.getElementById('status');
+      if (!pwdBaru || pwdBaru.length < 6) return status.innerHTML = "<span style='color:red'>Password minimal 6 karakter!</span>";
+
+      status.innerText = "Memperbarui password...";
+      const { error } = await supabaseClient.auth.updateUser({ password: pwdBaru });
+
+      if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
+      else {
+        status.innerHTML = "<span style='color:green'>Password Anda berhasil diperbarui!</span>";
+        document.getElementById('myNewPassword').value = '';
+      }
+    }
+
     async function kirimPengajuan(jenisType) {
       const status = document.getElementById('status');
       let selectedDate = '';
@@ -844,7 +878,7 @@
               user_id: currentUser.id,
               type: 'claim_absen',
               shift_choice: `Masuk (${timeMasuk})`,
-              description: `[Tanggal: ${selectedDate}] Klaim Clockin (${timeMasuk}) - ${desc}`,
+              description: `[Tanggal: ${selectedDate}] Klaim Absen Masuk (${timeMasuk}) - ${desc}`,
               date: selectedDate,
               status: 'Pending'
             },
@@ -852,7 +886,7 @@
               user_id: currentUser.id,
               type: 'claim_absen',
               shift_choice: `Pulang (${timePulang})`,
-              description: `[Tanggal: ${selectedDate}] Klaim Clockout (${timePulang}) - ${desc}`,
+              description: `[Tanggal: ${selectedDate}] Klaim Absen Pulang (${timePulang}) - ${desc}`,
               date: selectedDate,
               status: 'Pending'
             }
@@ -882,7 +916,7 @@
       status.innerText = "Mengirim pengajuan...";
       let fullDescription = `[Tanggal: ${selectedDate}] ${desc}`;
       if (jenisType === 'shift') fullDescription = `[Tanggal: ${selectedDate}] Perubahan ke ${shiftChoice} - ${desc}`;
-      if (jenisType === 'claim_absen') fullDescription = `[Tanggal: ${selectedDate}] Klaim Presensi ${shiftChoice} - ${desc}`;
+      if (jenisType === 'claim_absen') fullDescription = `[Tanggal: ${selectedDate}] Klaim Absen ${shiftChoice} - ${desc}`;
 
       const { error } = await supabaseClient.from('requests').insert([{ 
         user_id: currentUser.id, 
@@ -1040,7 +1074,7 @@
           
           let tipeJenis = 'IZIN';
           if (item.type === 'shift') tipeJenis = 'TUKAR SHIFT';
-          if (item.type === 'claim_absen') tipeJenis = 'KLAIM PRESENSI';
+          if (item.type === 'claim_absen') tipeJenis = 'KLAIM ABSEN';
 
           let badgeClass = 'badge-pending';
           if (st === 'Disetujui') badgeClass = 'badge-approved';
@@ -1102,18 +1136,47 @@
       if (allUsers && allUsers.length > 0) {
         userListContainer.innerHTML = allUsers.map(u => {
           const namaUser = u.nama_lengkap || u.full_name || 'Pengguna';
+          const isNonAktif = u.status_aktif === false;
+
+          let optionSupervisorsHtml = '<option value="">-- Tanpa Atasan --</option>';
+          listSupervisors.forEach(s => {
+            const isSel = u.supervisor_id === s.id ? 'selected' : '';
+            optionSupervisorsHtml += `<option value="${s.id}" ${isSel}>${s.nama_lengkap || s.full_name}</option>`;
+          });
+
           return `
-            <div class="list-item">
-              <b>${namaUser}</b>
-              <div style="display:flex; gap:4px; margin-top:4px;">
-                <select id="role_${u.id}" style="padding:2px; font-size:10px;">
-                  <option value="magang" ${u.role==='magang'?'selected':''}>Magang</option>
-                  <option value="supervisor" ${u.role==='supervisor'?'selected':''}>Supervisor</option>
-                  <option value="superadmin" ${u.role==='superadmin'?'selected':''}>Super Admin</option>
-                </select>
-                <input type="text" id="unit_${u.id}" value="${u.unit_kerja || 'Umum'}" placeholder="Unit Kerja" style="padding:2px; font-size:10px;">
+            <div class="list-item" style="${isNonAktif?'opacity:0.6; background:#fee2e2;':''}">
+              <b>${namaUser}</b> ${isNonAktif?'<span style="color:red; font-weight:bold;">(NON-AKTIF)</span>':''}
+              
+              <div style="margin-top:4px;">
+                <label style="font-size:10px; display:block;">Role & Unit Kerja:</label>
+                <div style="display:flex; gap:4px;">
+                  <select id="role_${u.id}" style="padding:2px; font-size:10px;">
+                    <option value="magang" ${u.role==='magang'?'selected':''}>Magang</option>
+                    <option value="supervisor" ${u.role==='supervisor'?'selected':''}>Supervisor</option>
+                    <option value="superadmin" ${u.role==='superadmin'?'selected':''}>Super Admin</option>
+                  </select>
+                  <input type="text" id="unit_${u.id}" value="${u.unit_kerja || 'Umum'}" placeholder="Unit Kerja" style="padding:2px; font-size:10px;">
+                </div>
               </div>
-              <button class="btn-secondary" style="padding:4px; font-size:10px; margin-top:4px;" onclick="simpanPengaturanUser('${u.id}')">Simpan Perubahan</button>
+
+              <div style="margin-top:4px;">
+                <label style="font-size:10px; display:block;">Approval Line (Supervisor Atasan):</label>
+                <select id="spv_${u.id}" style="padding:2px; font-size:10px;">
+                  ${optionSupervisorsHtml}
+                </select>
+              </div>
+
+              <div style="margin-top:4px;">
+                <label style="font-size:10px; display:block;">Riset Password Pengguna:</label>
+                <input type="password" id="resetPwd_${u.id}" placeholder="Password Baru" style="padding:2px; font-size:10px;">
+              </div>
+
+              <div style="display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;">
+                <button class="btn-secondary" style="padding:3px 6px; font-size:10px;" onclick="simpanPengaturanUser('${u.id}')">Simpan Perubahan</button>
+                <button class="btn-warning" style="padding:3px 6px; font-size:10px;" onclick="toggleStatusAktifUser('${u.id}', ${!isNonAktif})">${isNonAktif?'Aktifkan':'Nonaktifkan'}</button>
+                <button class="btn-delete" onclick="hapusUserPermanen('${u.id}', '${namaUser}')">Hapus Akun</button>
+              </div>
             </div>
           `;
         }).join('');
@@ -1211,22 +1274,32 @@
 
           let jamMasuk = '-';
           let jamPulang = '-';
+          let taggingLokasi = '-';
           let statusAbsen = isWeekend || isHariLibur ? 'Libur' : 'Tidak Hadir';
 
-          if (absenMasuk) jamMasuk = absenMasuk.jam_masuk;
-          else if (claimMasukInfo) {
+          if (absenMasuk) {
+            jamMasuk = absenMasuk.jam_masuk;
+            taggingLokasi = absenMasuk.alamat || (absenMasuk.latitude + ', ' + absenMasuk.longitude);
+          } else if (claimMasukInfo) {
             const m = claimMasukInfo.shift_choice.match(/\((.*?)\)/);
             jamMasuk = m ? `${m[1]} (Klaim)` : 'Klaim';
+            taggingLokasi = claimMasukInfo.description || 'Klaim Presensi Disetujui';
           }
 
-          if (absenPulang) jamPulang = absenPulang.jam_masuk;
-          else if (claimPulangInfo) {
+          if (absenPulang) {
+            jamPulang = absenPulang.jam_masuk;
+            if (taggingLokasi === '-') taggingLokasi = absenPulang.alamat || (absenPulang.latitude + ', ' + absenPulang.longitude);
+          } else if (claimPulangInfo) {
             const m = claimPulangInfo.shift_choice.match(/\((.*?)\)/);
             jamPulang = m ? `${m[1]} (Klaim)` : 'Klaim';
+            if (taggingLokasi === '-') taggingLokasi = claimPulangInfo.description || 'Klaim Presensi Disetujui';
           }
 
           if (jamMasuk !== '-' || jamPulang !== '-') statusAbsen = 'Hadir';
-          if (izinApproved) statusAbsen = 'Izin (Disetujui)';
+          if (izinApproved) {
+            statusAbsen = 'Izin (Disetujui)';
+            taggingLokasi = izinApproved.description || 'Izin Disetujui';
+          }
 
           dataExportSuperAdmin.push({
             tanggal: opsiTgl,
@@ -1235,6 +1308,7 @@
             shift: shiftKerjaText,
             jamMasuk: jamMasuk,
             jamPulang: jamPulang,
+            taggingLokasi: taggingLokasi,
             status: statusAbsen
           });
         }
@@ -1246,6 +1320,7 @@
             <b>${row.nama}</b> (${row.unit}) - <small>${row.tanggal}</small><br>
             ⏰ Shift: <b>${row.shift}</b><br>
             📌 Masuk: ${row.jamMasuk} | Pulang: ${row.jamPulang}<br>
+            📍 Lokasi: <small style="color:#475569;">${row.taggingLokasi}</small><br>
             Status: <span class="status-badge-info ${row.status.includes('Hadir')?'badge-approved':(row.status==='Libur'?'badge-rejected':'badge-pending')}">${row.status}</span>
           </div>
         `).join('');
@@ -1263,6 +1338,7 @@
         "Shift Kerja": item.shift,
         "Jam Masuk": item.jamMasuk,
         "Jam Pulang": item.jamPulang,
+        "Tagging Lokasi / Catatan": item.taggingLokasi,
         "Status Presensi": item.status
       }));
 
@@ -1280,14 +1356,14 @@
       doc.text("Rekap Presensi Magang Komnas Perempuan", 14, 15);
       
       const tableData = dataExportSuperAdmin.map(row => [
-        row.tanggal, row.nama, row.unit, row.shift, row.jamMasuk, row.jamPulang, row.status
+        row.tanggal, row.nama, row.unit, row.shift, row.jamMasuk, row.jamPulang, row.taggingLokasi, row.status
       ]);
 
       doc.autoTable({
-        head: [['Tanggal', 'Nama Pemohon', 'Unit Kerja', 'Shift Kerja', 'Jam Masuk', 'Jam Pulang', 'Status']],
+        head: [['Tanggal', 'Nama Pemohon', 'Unit Kerja', 'Shift Kerja', 'Jam Masuk', 'Jam Pulang', 'Tagging Lokasi / Catatan', 'Status']],
         body: tableData,
         startY: 22,
-        styles: { fontSize: 8 }
+        styles: { fontSize: 7 }
       });
 
       doc.save(`Rekap_Presensi_Magang_${Date.now()}.pdf`);
@@ -1321,7 +1397,8 @@
           phone_number: phone,
           role: role,
           unit_kerja: unit,
-          supervisor_id: spvId
+          supervisor_id: spvId,
+          status_aktif: true
         });
 
         if (profErr) status.innerHTML = `<span style='color:red'>Profil gagal dibuat: ${profErr.message}</span>`;
@@ -1340,18 +1417,63 @@
     async function simpanPengaturanUser(targetUserId) {
       const roleBaru = document.getElementById(`role_${targetUserId}`).value;
       const unitBaru = document.getElementById(`unit_${targetUserId}`).value;
+      const spvBaru = document.getElementById(`spv_${targetUserId}`).value || null;
+      const pwdBaru = document.getElementById(`resetPwd_${targetUserId}`).value;
       const status = document.getElementById('status');
 
       status.innerText = "Memperbarui data pengguna...";
 
       const { error } = await supabaseClient.from('profiles').update({
         role: roleBaru,
-        unit_kerja: unitBaru
+        unit_kerja: unitBaru,
+        supervisor_id: spvBaru
+      }).eq('id', targetUserId);
+
+      if (error) {
+        status.innerHTML = `<span style='color:red'>${error.message}</span>`;
+        return;
+      }
+
+      if (pwdBaru && pwdBaru.length >= 6) {
+        const { error: pwdErr } = await supabaseClient.auth.admin.updateUserById(targetUserId, { password: pwdBaru });
+        if (pwdErr) {
+          console.log("Catatan reset pwd admin:", pwdErr.message);
+        }
+      }
+
+      status.innerHTML = "<span style='color:green'>Data pengguna & Approval Line berhasil diperbarui!</span>";
+      document.getElementById(`resetPwd_${targetUserId}`).value = '';
+      await muatMenuSuperAdmin();
+    }
+
+    async function toggleStatusAktifUser(targetUserId, nonaktifkan) {
+      const status = document.getElementById('status');
+      status.innerText = "Mengubah status akun...";
+
+      const { error } = await supabaseClient.from('profiles').update({
+        status_aktif: !nonaktifkan
       }).eq('id', targetUserId);
 
       if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
       else {
-        status.innerHTML = "<span style='color:green'>Data pengguna berhasil diperbarui!</span>";
+        status.innerHTML = `<span style='color:green'>Akun berhasil di-${nonaktifkan?'nonaktifkan':'aktifkan'}!</span>`;
+        await muatMenuSuperAdmin();
+      }
+    }
+
+    async function hapusUserPermanen(targetUserId, namaUser) {
+      if (!confirm(`Apakah Anda yakin ingin MENGHAPUS PERMANEN akun ${namaUser}? Data yang dihapus tidak dapat dikembalikan.`)) return;
+
+      const status = document.getElementById('status');
+      status.innerText = "Menghapus akun...";
+
+      await supabaseClient.from('attendances').delete().eq('user_id', targetUserId);
+      await supabaseClient.from('requests').delete().eq('user_id', targetUserId);
+      const { error } = await supabaseClient.from('profiles').delete().eq('id', targetUserId);
+
+      if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
+      else {
+        status.innerHTML = `<span style='color:green'>Akun ${namaUser} berhasil dihapus dari sistem (Offboarded)!</span>`;
         await muatMenuSuperAdmin();
       }
     }
