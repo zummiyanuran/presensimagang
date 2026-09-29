@@ -238,8 +238,13 @@
           <button class="btn-purple" onclick="superAdminRegisterUser()">Buat Akun Baru</button>
         </div>
 
+<!-- TAB SUPER ADMIN: KELOLA AKUN -->
         <h4 style="margin-bottom:6px;">Kelola Akun, Atasan, Offboard & Password</h4>
-        <div id="adminUserList" style="max-height:220px; overflow-y:auto;"></div>
+        
+        <!-- INPUT FILTER / PENCARIAN USER -->
+        <input type="text" id="adminSearchUser" placeholder="🔍 Cari nama pengguna..." onkeyup="filterUserAdminList()" style="margin-bottom:8px;">
+        
+        <div id="adminUserList" style="max-height:250px; overflow-y:auto;"></div>
       </div>
 
       <!-- TAB 6: DIREKTORI REKAN -->
@@ -1116,7 +1121,7 @@
       }
     }
 
-    async function muatMenuSuperAdmin() {
+async function muatMenuSuperAdmin() {
       const { data: spvs } = await supabaseClient.from('profiles').select('*').in('role', ['supervisor', 'superadmin']);
       listSupervisors = spvs || [];
 
@@ -1136,7 +1141,6 @@
       if (allUsers && allUsers.length > 0) {
         userListContainer.innerHTML = allUsers.map(u => {
           const namaUser = u.nama_lengkap || u.full_name || 'Pengguna';
-          const isNonAktif = u.status_aktif === false;
 
           let optionSupervisorsHtml = '<option value="">-- Tanpa Atasan --</option>';
           listSupervisors.forEach(s => {
@@ -1145,8 +1149,8 @@
           });
 
           return `
-            <div class="list-item" style="${isNonAktif?'opacity:0.6; background:#fee2e2;':''}">
-              <b>${namaUser}</b> ${isNonAktif?'<span style="color:red; font-weight:bold;">(NON-AKTIF)</span>':''}
+            <div class="list-item user-card-item" data-name="${namaUser.toLowerCase()}">
+              <b>${namaUser}</b>
               
               <div style="margin-top:4px;">
                 <label style="font-size:10px; display:block;">Role & Unit Kerja:</label>
@@ -1168,14 +1172,13 @@
               </div>
 
               <div style="margin-top:4px;">
-                <label style="font-size:10px; display:block;">Riset Password Pengguna:</label>
+                <label style="font-size:10px; display:block;">Reset Password Pengguna:</label>
                 <input type="password" id="resetPwd_${u.id}" placeholder="Password Baru" style="padding:2px; font-size:10px;">
               </div>
 
               <div style="display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;">
                 <button class="btn-secondary" style="padding:3px 6px; font-size:10px;" onclick="simpanPengaturanUser('${u.id}')">Simpan Perubahan</button>
-                <button class="btn-warning" style="padding:3px 6px; font-size:10px;" onclick="toggleStatusAktifUser('${u.id}', ${!isNonAktif})">${isNonAktif?'Aktifkan':'Nonaktifkan'}</button>
-                <button class="btn-delete" onclick="hapusUserPermanen('${u.id}', '${namaUser}')">Hapus Akun</button>
+                <button class="btn-delete" style="padding:3px 6px; font-size:10px;" onclick="hapusUserPermanen('${u.id}', '${namaUser}')">Offboard (Hapus Permanen)</button>
               </div>
             </div>
           `;
@@ -1185,6 +1188,20 @@
       }
     }
 
+    // FUNGSI FILTER / PENCARIAN NAMA USER
+    function filterUserAdminList() {
+      const keyword = document.getElementById('adminSearchUser').value.toLowerCase().trim();
+      const items = document.querySelectorAll('.user-card-item');
+
+      items.forEach(item => {
+        const name = item.getAttribute('data-name');
+        if (name.includes(keyword)) {
+          item.style.display = "block";
+        } else {
+          item.style.display = "none";
+        }
+      });
+    }
     async function muatRekapPresensiSuperAdmin() {
       const container = document.getElementById('adminRekapList');
       container.innerHTML = "<small>Memuat rekap presensi...</small>";
@@ -1370,55 +1387,53 @@
     }
 
 async function superAdminRegisterUser() {
-  const name = document.getElementById('adminNewName').value.trim();
-  const email = document.getElementById('adminNewEmail').value.trim();
-  const phone = document.getElementById('adminNewPhone').value.trim();
-  const password = document.getElementById('adminNewPassword').value;
-  const role = document.getElementById('adminNewRole').value;
-  const unit = document.getElementById('adminNewUnit').value.trim() || 'Umum';
-  const spvId = document.getElementById('adminNewSupervisor').value || null;
-  const status = document.getElementById('status');
+      const name = document.getElementById('adminNewName').value.trim();
+      const email = document.getElementById('adminNewEmail').value.trim();
+      const phone = document.getElementById('adminNewPhone').value.trim();
+      const password = document.getElementById('adminNewPassword').value;
+      const role = document.getElementById('adminNewRole').value;
+      const unit = document.getElementById('adminNewUnit').value.trim() || 'Umum';
+      const spvId = document.getElementById('adminNewSupervisor').value || null;
+      const status = document.getElementById('status');
 
-  if (!name || !email || !password) return status.innerHTML = "<span style='color:red'>Lengkapi nama, email, dan password!</span>";
+      if (!name || !email || !password) return status.innerHTML = "<span style='color:red'>Lengkapi nama, email, dan password!</span>";
 
-  status.innerText = "Mendaftarkan akun baru...";
+      status.innerText = "Mendaftarkan akun baru...";
 
-  // REVISI: Gunakan auth.admin.createUser agar tidak merusak/mengganti sesi login Super Admin
-  const { data: authData, error: authErr } = await supabaseClient.auth.admin.createUser({
-    email: email,
-    password: password,
-    email_confirm: true // Otomatis verifikasi email
-  });
+      const { data: authData, error: authErr } = await supabaseClient.auth.admin.createUser({
+        email: email,
+        password: password,
+        email_confirm: true
+      });
 
-  if (authErr) {
-    return status.innerHTML = `<span style='color:red'>Gagal Pendaftaran: ${authErr.message}</span>`;
-  }
+      if (authErr) {
+        return status.innerHTML = `<span style='color:red'>Gagal Pendaftaran: ${authErr.message}</span>`;
+      }
 
-  if (authData?.user) {
-    const { error: profErr } = await supabaseClient.from('profiles').upsert({
-      id: authData.user.id,
-      nama_lengkap: name,
-      full_name: name,
-      phone_number: phone,
-      role: role,
-      unit_kerja: unit,
-      supervisor_id: spvId,
-      status_aktif: true
-    });
+      if (authData?.user) {
+        const { error: profErr } = await supabaseClient.from('profiles').upsert({
+          id: authData.user.id,
+          nama_lengkap: name,
+          full_name: name,
+          phone_number: phone,
+          role: role,
+          unit_kerja: unit,
+          supervisor_id: spvId
+        });
 
-    if (profErr) {
-      status.innerHTML = `<span style='color:red'>Profil gagal dibuat: ${profErr.message}</span>`;
-    } else {
-      status.innerHTML = `<span style='color:green'>Akun <b>${name}</b> (${role}) berhasil dibuat!</span>`;
-      document.getElementById('adminNewName').value = '';
-      document.getElementById('adminNewEmail').value = '';
-      document.getElementById('adminNewPhone').value = '';
-      document.getElementById('adminNewPassword').value = '';
-      document.getElementById('adminNewUnit').value = '';
-      await muatMenuSuperAdmin();
+        if (profErr) {
+          status.innerHTML = `<span style='color:red'>Profil gagal dibuat: ${profErr.message}</span>`;
+        } else {
+          status.innerHTML = `<span style='color:green'>Akun <b>${name}</b> (${role}) berhasil dibuat!</span>`;
+          document.getElementById('adminNewName').value = '';
+          document.getElementById('adminNewEmail').value = '';
+          document.getElementById('adminNewPhone').value = '';
+          document.getElementById('adminNewPassword').value = '';
+          document.getElementById('adminNewUnit').value = '';
+          await muatMenuSuperAdmin();
+        }
+      }
     }
-  }
-}
     async function simpanPengaturanUser(targetUserId) {
       const roleBaru = document.getElementById(`role_${targetUserId}`).value;
       const unitBaru = document.getElementById(`unit_${targetUserId}`).value;
@@ -1466,21 +1481,31 @@ async function superAdminRegisterUser() {
       }
     }
 
-    async function hapusUserPermanen(targetUserId, namaUser) {
-      if (!confirm(`Apakah Anda yakin ingin MENGHAPUS PERMANEN akun ${namaUser}? Data yang dihapus tidak dapat dikembalikan.`)) return;
+async function hapusUserPermanen(targetUserId, namaUser) {
+      if (!confirm(`Apakah Anda yakin ingin MELAKUKAN OFFBOARD / HAPUS PERMANEN pada akun ${namaUser}?\n\nPengguna tidak akan bisa login lagi dan email dapat didaftarkan ulang.`)) return;
 
       const status = document.getElementById('status');
-      status.innerText = "Menghapus akun...";
+      status.innerText = "Proses Offboard (Menghapus akun)...";
 
+      // 1. Hapus riwayat di tabel database
       await supabaseClient.from('attendances').delete().eq('user_id', targetUserId);
       await supabaseClient.from('requests').delete().eq('user_id', targetUserId);
-      const { error } = await supabaseClient.from('profiles').delete().eq('id', targetUserId);
+      const { error: profErr } = await supabaseClient.from('profiles').delete().eq('id', targetUserId);
 
-      if (error) status.innerHTML = `<span style='color:red'>${error.message}</span>`;
-      else {
-        status.innerHTML = `<span style='color:green'>Akun ${namaUser} berhasil dihapus dari sistem (Offboarded)!</span>`;
-        await muatMenuSuperAdmin();
+      if (profErr) {
+        return status.innerHTML = `<span style='color:red'>Gagal hapus profil: ${profErr.message}</span>`;
       }
+
+      // 2. Hapus user dari Supabase Auth agar email bisa didaftarkan ulang tanpa error "User already registered"
+      const { error: authErr } = await supabaseClient.auth.admin.deleteUser(targetUserId);
+
+      if (authErr) {
+        status.innerHTML = `<span style='color:orange'>Profil terhapus, tetapi Auth error: ${authErr.message}</span>`;
+      } else {
+        status.innerHTML = `<span style='color:green'>Akun <b>${namaUser}</b> berhasil di-offboard dan dihapus permanen!</span>`;
+      }
+
+      await muatMenuSuperAdmin();
     }
 
     async function muatRekan() {
