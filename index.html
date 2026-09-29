@@ -1333,7 +1333,7 @@
       if (dataExportSuperAdmin.length === 0) return alert("Tidak ada data untuk diexport!");
       const dataFormatted = dataExportSuperAdmin.map(item => ({
         "Tanggal": item.tanggal,
-        "Nama Pemohon": item.nama,
+        "Nama Pemagang": item.nama,
         "Unit Kerja": item.unit,
         "Shift Kerja": item.shift,
         "Jam Masuk": item.jamMasuk,
@@ -1360,7 +1360,7 @@
       ]);
 
       doc.autoTable({
-        head: [['Tanggal', 'Nama Pemohon', 'Unit Kerja', 'Shift Kerja', 'Jam Masuk', 'Jam Pulang', 'Tagging Lokasi / Catatan', 'Status']],
+        head: [['Tanggal', 'Nama Pemagang', 'Unit Kerja', 'Shift Kerja', 'Jam Masuk', 'Jam Pulang', 'Tagging Lokasi / Catatan', 'Status']],
         body: tableData,
         startY: 22,
         styles: { fontSize: 7 }
