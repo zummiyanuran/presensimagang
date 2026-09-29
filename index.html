@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>HRIS Magang Komnas Perempuan</title>
+  <title>HRIS Pemagang Komnas Perempuan</title>
   <!-- Supabase JS -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <!-- SheetJS untuk Export Excel -->
@@ -59,7 +59,7 @@
 <body>
 
   <div class="card">
-    <h2>HRIS Magang</h2>
+    <h2>KARTINI</h2>
 
     <!-- FORM AUTENTIKASI -->
     <div id="authSection">
@@ -77,9 +77,9 @@
 
       <!-- TAB NAVIGASI -->
       <div class="nav-tabs">
-        <button id="tabAbsenBtn" class="active" onclick="switchTab('absen')">Presensi</button>
+        <button id="tabAbsenBtn" class="active" onclick="switchTab('Presensi')">Presensi</button>
         <button id="tabShiftBtn" onclick="switchTab('shift')">Jadwal Shift</button>
-        <button id="tabAjukanAbsenBtn" onclick="switchTab('ajukanAbsen')">Klaim Absen</button>
+        <button id="tabAjukanAbsenBtn" onclick="switchTab('ajukanPresensi')">Klaim Presensi</button>
         <button id="tabIzinBtn" onclick="switchTab('izin')">Izin</button>
         <button id="tabTukarShiftBtn" onclick="switchTab('tukarShift')">Tukar Shift</button>
 
@@ -99,8 +99,8 @@
         
         <div class="today-shift-badge" id="todayShiftDisplay">⏰ Shift Hari Ini: Memuat...</div>
 
-        <button id="btnMasuk" onclick="catatPresensi('Masuk')">Absen Masuk via GPS</button>
-        <button id="btnPulang" class="btn-pulang" onclick="catatPresensi('Pulang')">Absen Pulang via GPS</button>
+        <button id="btnMasuk" onclick="catatPresensi('Masuk')">Clockin</button>
+        <button id="btnPulang" class="btn-pulang" onclick="catatPresensi('Pulang')">Clockout</button>
         
         <h4 style="margin-top:15px; margin-bottom:6px;">Riwayat Harian Saya</h4>
         <div id="riwayatList" style="max-height:160px; overflow-y:auto;"></div>
@@ -127,9 +127,9 @@
 
         <label style="font-size:11px; display:block; text-align:left; margin-top:4px;">Tipe Absen:</label>
         <select id="claimType" onchange="toggleTimeInputs()">
-          <option value="Masuk">Absen Masuk</option>
-          <option value="Pulang">Absen Pulang</option>
-          <option value="MasukDanPulang">Masuk & Pulang Sekaligus</option>
+          <option value="Masuk">Clockin</option>
+          <option value="Pulang">Clockout</option>
+          <option value="MasukDanPulang">Clockin dan Clockout</option>
         </select>
 
         <div class="time-container">
@@ -185,7 +185,7 @@
 
       <!-- TAB KHUSUS SUPERVISOR: PERSETUJUAN -->
       <div id="tabApprove" class="hidden">
-        <h4 style="margin-bottom:8px;">Daftar Pengajuan Anak Magang</h4>
+        <h4 style="margin-bottom:8px;">Daftar Pengajuan Pemagang</h4>
         <div id="approvalList" style="max-height:250px; overflow-y:auto;"></div>
       </div>
 
@@ -194,9 +194,9 @@
         <h4 style="margin-bottom:8px;">Rekap Presensi Keseluruhan (Super Admin)</h4>
         
         <div style="background:#f1f5f9; padding:10px; border-radius:8px; text-align:left; margin-bottom:12px;">
-          <label style="font-size:11px; font-weight:bold;">Filter Anak Magang:</label>
+          <label style="font-size:11px; font-weight:bold;">Filter Pemagang:</label>
           <select id="adminFilterMagang" onchange="muatRekapPresensiSuperAdmin()">
-            <option value="ALL">-- Semua Anak Magang --</option>
+            <option value="ALL">-- Semua Pemagang --</option>
           </select>
 
           <label style="font-size:11px; font-weight:bold; margin-top:6px; display:block;">Filter Bulan & Tahun:</label>
@@ -222,8 +222,8 @@
           
           <label style="font-size:11px;">Role Akun:</label>
           <select id="adminNewRole">
-            <option value="magang">Anak Magang</option>
-            <option value="supervisor">Supervisor Magang</option>
+            <option value="magang">Pemagang</option>
+            <option value="supervisor">Supervisor Pemagang</option>
             <option value="superadmin">Super Admin</option>
           </select>
 
@@ -244,7 +244,7 @@
 
       <!-- TAB 6: DIREKTORI REKAN -->
       <div id="tabRekan" class="hidden">
-        <h4>Daftar Rekan Magang</h4>
+        <h4>Daftar Rekan Pemagang</h4>
         <div id="rekanList" style="max-height:220px; overflow-y:auto;"></div>
       </div>
 
@@ -1063,18 +1063,18 @@
         });
 
         if (filteredReqs.length === 0) {
-          list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan dari anak magang bimbingan Anda.</small>";
+          list.innerHTML = "<small style='color:#64748b;'>Belum ada pengajuan dari pemagang bimbingan Anda.</small>";
           return;
         }
 
         list.innerHTML = filteredReqs.map(item => {
           const pemohonProfile = profilesMap[item.user_id];
-          const pemohon = pemohonProfile?.nama_lengkap || pemohonProfile?.full_name || 'Anak Magang';
+          const pemohon = pemohonProfile?.nama_lengkap || pemohonProfile?.full_name || 'Pemagang';
           const st = item.status || 'Pending';
           
           let tipeJenis = 'IZIN';
           if (item.type === 'shift') tipeJenis = 'TUKAR SHIFT';
-          if (item.type === 'claim_absen') tipeJenis = 'KLAIM ABSEN';
+          if (item.type === 'claim_absen') tipeJenis = 'KLAIM PRESENSI';
 
           let badgeClass = 'badge-pending';
           if (st === 'Disetujui') badgeClass = 'badge-approved';
@@ -1128,7 +1128,7 @@
       
       const adminMagangSelect = document.getElementById('adminFilterMagang');
       if (allUsers && allUsers.length > 0) {
-        adminMagangSelect.innerHTML = '<option value="ALL">-- Semua Anak Magang --</option>' + 
+        adminMagangSelect.innerHTML = '<option value="ALL">-- Semua Pemagang --</option>' + 
           allUsers.filter(u => (u.role || 'magang') === 'magang').map(u => `<option value="${u.id}">${u.nama_lengkap || u.full_name}</option>`).join('');
       }
 
@@ -1236,7 +1236,7 @@
 
       listMagangIds.forEach(uId => {
         const mUser = usersMap[uId];
-        const nama = mUser?.nama_lengkap || mUser?.full_name || 'Anak Magang';
+        const nama = mUser?.nama_lengkap || mUser?.full_name || 'Pemagang';
         const unit = mUser?.unit_kerja || 'Umum';
 
         for (let day = 1; day <= jumlahHari; day++) {
@@ -1484,7 +1484,7 @@
       
       if (data && data.length > 0) {
         list.innerHTML = data.map(r => {
-          const namaRekan = r.nama_lengkap || r.full_name || 'Anak Magang';
+          const namaRekan = r.nama_lengkap || r.full_name || 'Pemagang';
           const roleRekan = (r.role || 'magang').toUpperCase();
           const unitRekan = r.unit_kerja || 'Umum';
           const phoneRekan = r.phone_number || '-';
